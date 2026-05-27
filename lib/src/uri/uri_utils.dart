@@ -200,11 +200,11 @@ sealed class UriUtils {
     };
     return uri != null
         ? await moveFileToSharedStorage(
-            uri,
-            destination,
-            directory: directory,
-            mimeType: mimeType,
-          )
+          uri,
+          destination,
+          directory: directory,
+          mimeType: mimeType,
+        )
         : null;
   }
 
@@ -282,7 +282,8 @@ sealed class UriUtils {
       File() => destination.uri,
       String() => Uri.file(destination),
       Uri() => destination,
-      _ => throw ArgumentError(
+      _ =>
+        throw ArgumentError(
           'Invalid destination type. Must be File, String, or Uri.',
         ),
     };
@@ -327,10 +328,11 @@ final class _DesktopUriUtils extends UriUtils {
     final parentPath = parentDirectoryUri.toFilePath(
       windows: Platform.isWindows,
     );
-    final cleanedSegments = newDirectoryName
-        .split(RegExp(r'[\\/]+'))
-        .where((segment) => segment.isNotEmpty)
-        .toList();
+    final cleanedSegments =
+        newDirectoryName
+            .split(RegExp(r'[\\/]+'))
+            .where((segment) => segment.isNotEmpty)
+            .toList();
     final fullPath = p.joinAll([parentPath, ...cleanedSegments]);
     final createdDirectory = await Directory(fullPath).create(recursive: true);
     return createdDirectory.uri;
@@ -471,7 +473,8 @@ final class _NativeUriUtils extends UriUtils {
           ?.where((e) => e != null)
           .map((e) => Uri.parse(e as String))
           .toList(growable: false),
-      _ => throw ArgumentError(
+      _ =>
+        throw ArgumentError(
           'pickFiles returned invalid value $uriStrings of type ${uriStrings.runtimeType}',
         ),
     };
@@ -595,8 +598,8 @@ extension StringUriExtensions on String {
 extension UriExtensions on Uri {
   /// Returns the File represented by this [uri]
   File toFile() => File(
-        toFilePath(windows: defaultTargetPlatform == TargetPlatform.windows),
-      );
+    toFilePath(windows: defaultTargetPlatform == TargetPlatform.windows),
+  );
 
   /// True if Uri scheme is file
   bool get isFileUri => scheme == 'file';

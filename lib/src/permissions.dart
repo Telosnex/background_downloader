@@ -43,11 +43,9 @@ base class PermissionsService implements Permissions {
       TargetPlatform.iOS => IOSPermissionsService(),
       TargetPlatform.linux ||
       TargetPlatform.macOS ||
-      TargetPlatform.windows =>
-        PermissionsService(),
-      _ => throw ArgumentError(
-          'Platform $defaultTargetPlatform is not supported',
-        ),
+      TargetPlatform.windows => PermissionsService(),
+      _ =>
+        throw ArgumentError('Platform $defaultTargetPlatform is not supported'),
     };
   }
 

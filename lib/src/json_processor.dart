@@ -235,14 +235,16 @@ Future<dynamic> _executeCommand(JsonCommand command) async {
 
     case _TaskAndNotificationConfigJsonStrings c:
       final tasksJsonString = jsonEncode(c.tasks);
-      final configs = c.tasks
-          .map(
-            (task) => BaseDownloader.notificationConfigForTaskUsingConfigSet(
-              task,
-              c.notificationConfigs,
-            ),
-          )
-          .toList();
+      final configs =
+          c.tasks
+              .map(
+                (task) =>
+                    BaseDownloader.notificationConfigForTaskUsingConfigSet(
+                      task,
+                      c.notificationConfigs,
+                    ),
+              )
+              .toList();
       final notificationConfigsJsonString = jsonEncode(configs);
       return (tasksJsonString, notificationConfigsJsonString);
   }

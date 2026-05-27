@@ -52,7 +52,8 @@ void _sendCounterToMainIsolate() {
 Future<TaskStatusUpdate?> beforeTaskStartCallbackNoChange(Task task) async {
   callbackCounter++;
   print(
-      'In beforeTaskStartCallbackNoChange. Callback counter is now $callbackCounter');
+    'In beforeTaskStartCallbackNoChange. Callback counter is now $callbackCounter',
+  );
   _sendCounterToMainIsolate();
   return null;
 }
@@ -61,17 +62,20 @@ Future<TaskStatusUpdate?> beforeTaskStartCallbackNoChange(Task task) async {
 Future<TaskStatusUpdate?> beforeTaskStartCallbackCancel(Task task) async {
   callbackCounter++;
   print(
-      'In beforeTaskStartCallbackCancel. Callback counter is now $callbackCounter');
+    'In beforeTaskStartCallbackCancel. Callback counter is now $callbackCounter',
+  );
   _sendCounterToMainIsolate();
-  return TaskStatusUpdate(
-      task, TaskStatus.canceled, null, 'response', {'header': 'value'});
+  return TaskStatusUpdate(task, TaskStatus.canceled, null, 'response', {
+    'header': 'value',
+  });
 }
 
 @pragma("vm:entry-point")
 Future<Task?> onTaskStartCallbackNoChange(Task original) async {
   callbackCounter++;
   print(
-      'In onTaskStartCallbackNoChange. Callback counter is now $callbackCounter');
+    'In onTaskStartCallbackNoChange. Callback counter is now $callbackCounter',
+  );
   _sendCounterToMainIsolate();
   return null;
 }
@@ -80,7 +84,8 @@ Future<Task?> onTaskStartCallbackNoChange(Task original) async {
 Future<Task?> onTaskStartCallbackUrlChange(Task original) async {
   callbackCounter++;
   print(
-      'In onTaskStartCallbackUrlChange. Callback counter is now $callbackCounter');
+    'In onTaskStartCallbackUrlChange. Callback counter is now $callbackCounter',
+  );
   _sendCounterToMainIsolate();
   return original.copyWith(url: '$getTestUrl?json=true&param1=changed');
 }
@@ -89,7 +94,8 @@ Future<Task?> onTaskStartCallbackUrlChange(Task original) async {
 Future<Task?> onTaskStartCallbackHeaderChange(Task original) async {
   callbackCounter++;
   print(
-      'In onTaskStartCallbackHeaderChange. Callback counter is now $callbackCounter');
+    'In onTaskStartCallbackHeaderChange. Callback counter is now $callbackCounter',
+  );
   _sendCounterToMainIsolate();
   return original.copyWith(headers: {'Auth': 'newBearer'});
 }
@@ -134,191 +140,279 @@ void main() {
   });
 
   group('beforeTaskStartCallback', () {
-    test('no-change callback', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final task = DownloadTask(
-          url: getTestUrl,
-          urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          filename: defaultFilename,
-          options:
-              TaskOptions(beforeTaskStart: beforeTaskStartCallbackNoChange));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var result = jsonDecode(await File(path).readAsString());
-      expect(result['args']['param1'], equals('original'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-      await File(path).delete();
-    });
-
-    test('cancel callback', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final task = DownloadTask(
-          url: getTestUrl,
-          urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          filename: defaultFilename,
-          options: TaskOptions(beforeTaskStart: beforeTaskStartCallbackCancel));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      final result = await FileDownloader().download(task);
-      expect(result.status, equals(TaskStatus.canceled));
-      expect(result.responseBody, equals('response'));
-      expect(result.responseHeaders, equals({'header': 'value'}));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-      expect(File(path).existsSync(), isFalse);
-    });
-  });
-
-  group('onStartCallback', () {
-    test('no-change callback', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final task = DownloadTask(
-          url: getTestUrl,
-          urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          filename: defaultFilename,
-          options: TaskOptions(onTaskStart: onTaskStartCallbackNoChange));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var result = jsonDecode(await File(path).readAsString());
-      expect(result['args']['param1'], equals('original'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-      await File(path).delete();
-    });
-
-    test('url-change callback', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final task = DownloadTask(
-          url: getTestUrl,
-          urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          filename: defaultFilename,
-          options: TaskOptions(onTaskStart: onTaskStartCallbackUrlChange));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var result = jsonDecode(await File(path).readAsString());
-      expect(result['args']['param1'], equals('changed'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-      await File(path).delete();
-    });
-
-    test('header-change callback', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final task = DownloadTask(
-          url: getTestUrl,
-          urlQueryParameters: {'json': 'true'},
-          headers: {'Original': 'header'},
-          filename: defaultFilename,
-          options: TaskOptions(onTaskStart: onTaskStartCallbackHeaderChange));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var result = jsonDecode(await File(path).readAsString());
-      expect(result['headers']['Auth'], equals('newBearer'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-
-      await File(path).delete();
-    });
-  });
-
-  group('onFinishedCallback', () {
-    test('onFinishedCallback passes the appropriate status',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      final task = DownloadTask(
-          url: getTestUrl,
-          urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          filename: defaultFilename,
-          options: TaskOptions(onTaskFinished: onTaskFinishedCallback));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var result = jsonDecode(await File(path).readAsString());
-      expect(result['args']['param1'], equals('original'));
-      await Future.delayed(const Duration(milliseconds: 100));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-      await File(path).delete();
-    });
-
-    test('onFinishedCallback after canceling beforeStartCallback',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // tests that onTaskFinished is also called when the task is canceled
-      // via the beforeStartCallback
-      final task = DownloadTask(
+    test(
+      'no-change callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DownloadTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true', 'param1': 'original'},
           filename: defaultFilename,
           options: TaskOptions(
-              beforeTaskStart: beforeTaskStartCallbackCancel,
-              onTaskFinished: onTaskFinishedCallback));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      final result = await FileDownloader().download(task);
-      expect(result.status, equals(TaskStatus.canceled));
-      expect(result.responseBody, equals('response'));
-      expect(result.responseHeaders, equals({'header': 'value'}));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-      expect(File(path).existsSync(), isFalse);
-      await Future.delayed(const Duration(milliseconds: 100));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 101));
-    });
+            beforeTaskStart: beforeTaskStartCallbackNoChange,
+          ),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var result = jsonDecode(await File(path).readAsString());
+        expect(result['args']['param1'], equals('original'));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+        await File(path).delete();
+      },
+    );
+
+    test(
+      'cancel callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DownloadTask(
+          url: getTestUrl,
+          urlQueryParameters: {'json': 'true', 'param1': 'original'},
+          filename: defaultFilename,
+          options: TaskOptions(beforeTaskStart: beforeTaskStartCallbackCancel),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        final result = await FileDownloader().download(task);
+        expect(result.status, equals(TaskStatus.canceled));
+        expect(result.responseBody, equals('response'));
+        expect(result.responseHeaders, equals({'header': 'value'}));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+        expect(File(path).existsSync(), isFalse);
+      },
+    );
+  });
+
+  group('onStartCallback', () {
+    test(
+      'no-change callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DownloadTask(
+          url: getTestUrl,
+          urlQueryParameters: {'json': 'true', 'param1': 'original'},
+          filename: defaultFilename,
+          options: TaskOptions(onTaskStart: onTaskStartCallbackNoChange),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var result = jsonDecode(await File(path).readAsString());
+        expect(result['args']['param1'], equals('original'));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+        await File(path).delete();
+      },
+    );
+
+    test(
+      'url-change callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DownloadTask(
+          url: getTestUrl,
+          urlQueryParameters: {'json': 'true', 'param1': 'original'},
+          filename: defaultFilename,
+          options: TaskOptions(onTaskStart: onTaskStartCallbackUrlChange),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var result = jsonDecode(await File(path).readAsString());
+        expect(result['args']['param1'], equals('changed'));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+        await File(path).delete();
+      },
+    );
+
+    test(
+      'header-change callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DownloadTask(
+          url: getTestUrl,
+          urlQueryParameters: {'json': 'true'},
+          headers: {'Original': 'header'},
+          filename: defaultFilename,
+          options: TaskOptions(onTaskStart: onTaskStartCallbackHeaderChange),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var result = jsonDecode(await File(path).readAsString());
+        expect(result['headers']['Auth'], equals('newBearer'));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+
+        await File(path).delete();
+      },
+    );
+  });
+
+  group('onFinishedCallback', () {
+    test(
+      'onFinishedCallback passes the appropriate status',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DownloadTask(
+          url: getTestUrl,
+          urlQueryParameters: {'json': 'true', 'param1': 'original'},
+          filename: defaultFilename,
+          options: TaskOptions(onTaskFinished: onTaskFinishedCallback),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var result = jsonDecode(await File(path).readAsString());
+        expect(result['args']['param1'], equals('original'));
+        await Future.delayed(const Duration(milliseconds: 100));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+        await File(path).delete();
+      },
+    );
+
+    test(
+      'onFinishedCallback after canceling beforeStartCallback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // tests that onTaskFinished is also called when the task is canceled
+        // via the beforeStartCallback
+        final task = DownloadTask(
+          url: getTestUrl,
+          urlQueryParameters: {'json': 'true', 'param1': 'original'},
+          filename: defaultFilename,
+          options: TaskOptions(
+            beforeTaskStart: beforeTaskStartCallbackCancel,
+            onTaskFinished: onTaskFinishedCallback,
+          ),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        final result = await FileDownloader().download(task);
+        expect(result.status, equals(TaskStatus.canceled));
+        expect(result.responseBody, equals('response'));
+        expect(result.responseHeaders, equals({'header': 'value'}));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+        expect(File(path).existsSync(), isFalse);
+        await Future.delayed(const Duration(milliseconds: 100));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 101),
+        );
+      },
+    );
   });
 
   group('DataTasks with callbacks', () {
-    test('beforeTaskStart callback cancel',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      final task = DataTask(
+    test(
+      'beforeTaskStart callback cancel',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DataTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          options: TaskOptions(beforeTaskStart: beforeTaskStartCallbackCancel));
-      final result = await FileDownloader().transmit(task);
-      expect(result.status, equals(TaskStatus.canceled));
-      expect(result.responseBody, equals('response'));
-      expect(result.responseHeaders, equals({'header': 'value'}));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-    });
+          options: TaskOptions(beforeTaskStart: beforeTaskStartCallbackCancel),
+        );
+        final result = await FileDownloader().transmit(task);
+        expect(result.status, equals(TaskStatus.canceled));
+        expect(result.responseBody, equals('response'));
+        expect(result.responseHeaders, equals({'header': 'value'}));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+      },
+    );
 
-    test('onTaskStart callback url change',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      final task = DataTask(
+    test(
+      'onTaskStart callback url change',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DataTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          options: TaskOptions(onTaskStart: onTaskStartCallbackUrlChange));
-      final result = await FileDownloader().transmit(task);
-      expect(result.status, equals(TaskStatus.complete));
-      var resultJson = jsonDecode(result.responseBody!);
-      expect(resultJson['args']['param1'], equals('changed'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-    });
+          options: TaskOptions(onTaskStart: onTaskStartCallbackUrlChange),
+        );
+        final result = await FileDownloader().transmit(task);
+        expect(result.status, equals(TaskStatus.complete));
+        var resultJson = jsonDecode(result.responseBody!);
+        expect(resultJson['args']['param1'], equals('changed'));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+      },
+    );
 
-    test('onTaskFinished callback',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      final task = DataTask(
+    test(
+      'onTaskFinished callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final task = DataTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true', 'param1': 'original'},
-          options: TaskOptions(onTaskFinished: onTaskFinishedCallback));
-      final result = await FileDownloader().transmit(task);
-      expect(result.status, equals(TaskStatus.complete));
-      var resultJson = jsonDecode(result.responseBody!);
-      expect(resultJson['args']['param1'], equals('original'));
-      await Future.delayed(const Duration(milliseconds: 100));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1));
-    });
+          options: TaskOptions(onTaskFinished: onTaskFinishedCallback),
+        );
+        final result = await FileDownloader().transmit(task);
+        expect(result.status, equals(TaskStatus.complete));
+        var resultJson = jsonDecode(result.responseBody!);
+        expect(resultJson['args']['param1'], equals('original'));
+        await Future.delayed(const Duration(milliseconds: 100));
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        );
+      },
+    );
   });
 
   group('onAuth callbacks', () {
@@ -332,111 +426,155 @@ void main() {
         refreshToken: 'initialRefreshToken',
         refreshHeaders: {
           'Authorization': 'Bearer {accessToken}',
-          'Refresh': 'Bearer {refreshToken}'
+          'Refresh': 'Bearer {refreshToken}',
         },
         refreshUrl: refreshTestUrl,
-        accessTokenExpiryTime: DateTime.now()
-            .subtract(const Duration(seconds: 10)), // expired token
+        accessTokenExpiryTime: DateTime.now().subtract(
+          const Duration(seconds: 10),
+        ), // expired token
       );
     });
 
-    test('refresh request', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final result = await http.post(Uri.parse(refreshTestUrl),
+    test(
+      'refresh request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final result = await http.post(
+          Uri.parse(refreshTestUrl),
           headers: {'Auth': 'Bearer abcd', 'Content-type': 'application/json'},
-          body: jsonEncode({'refresh_token': 'myRefreshToken'}));
-      final json = jsonDecode(result.body);
-      expect(json['headers']['Auth'], equals('Bearer abcd'));
-      expect(json['access_token'], equals('new_access_token'));
-      expect(json['expires_in'], equals(3600));
-      expect(json['post_body']['refresh_token'], equals('myRefreshToken'));
-    });
+          body: jsonEncode({'refresh_token': 'myRefreshToken'}),
+        );
+        final json = jsonDecode(result.body);
+        expect(json['headers']['Auth'], equals('Bearer abcd'));
+        expect(json['access_token'], equals('new_access_token'));
+        expect(json['expires_in'], equals(3600));
+        expect(json['post_body']['refresh_token'], equals('myRefreshToken'));
+      },
+    );
 
-    test('default handler with unexpired token -> no callback',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // no callback makes no change to the original task, so only
-      // the known arguments and headers should be present, as well as the
-      // original auth argument and header (because no refresh took place)
-      auth.onAuthCallback = onAuthCallbackNoChange;
-      auth.accessTokenExpiryTime =
-          DateTime.now().add(const Duration(minutes: 1));
-      final task = DownloadTask(
+    test(
+      'default handler with unexpired token -> no callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // no callback makes no change to the original task, so only
+        // the known arguments and headers should be present, as well as the
+        // original auth argument and header (because no refresh took place)
+        auth.onAuthCallback = onAuthCallbackNoChange;
+        auth.accessTokenExpiryTime = DateTime.now().add(
+          const Duration(minutes: 1),
+        );
+        final task = DownloadTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true'},
           headers: {'H1': 'value1'},
           filename: defaultFilename,
-          options: TaskOptions(auth: auth));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var resultAsString = await File(path).readAsString();
-      print(resultAsString);
-      var result = jsonDecode(resultAsString);
-      expect(result['args']['json'], equals('true'));
-      expect(result['args']['auth'], equals('initialAccessToken'));
-      expect(result['headers']['H1'], equals('value1'));
-      expect(result['headers']['Authorization'],
-          equals('Bearer initialAccessToken'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest)); // no callback
-      await File(path).delete();
-    });
+          options: TaskOptions(auth: auth),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var resultAsString = await File(path).readAsString();
+        print(resultAsString);
+        var result = jsonDecode(resultAsString);
+        expect(result['args']['json'], equals('true'));
+        expect(result['args']['auth'], equals('initialAccessToken'));
+        expect(result['headers']['H1'], equals('value1'));
+        expect(
+          result['headers']['Authorization'],
+          equals('Bearer initialAccessToken'),
+        );
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest),
+        ); // no callback
+        await File(path).delete();
+      },
+    );
 
-    test('default handler with null auth callback',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // null auth callback makes no change to the original task, so only
-      // the known arguments and headers should be present, as well as the
-      // original auth argument and header (because no refresh took place)
-      auth.onAuthCallback = onAuthCallbackNoChange; // returns null
-      final task = DownloadTask(
+    test(
+      'default handler with null auth callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // null auth callback makes no change to the original task, so only
+        // the known arguments and headers should be present, as well as the
+        // original auth argument and header (because no refresh took place)
+        auth.onAuthCallback = onAuthCallbackNoChange; // returns null
+        final task = DownloadTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true'},
           headers: {'H1': 'value1'},
           filename: defaultFilename,
-          options: TaskOptions(auth: auth));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var resultAsString = await File(path).readAsString();
-      print(resultAsString);
-      var result = jsonDecode(resultAsString);
-      expect(result['args']['json'], equals('true'));
-      expect(result['args']['auth'], equals('initialAccessToken')); // not added
-      expect(result['headers']['H1'], equals('value1'));
-      expect(result['headers']['Authorization'],
-          equals('Bearer initialAccessToken'));
-      expect(mainIsolateCallbackCounter,
-          equals(mainIsolateCallbackCounterAtStartOfTest + 1)); // called once
-      await File(path).delete();
-    });
+          options: TaskOptions(auth: auth),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var resultAsString = await File(path).readAsString();
+        print(resultAsString);
+        var result = jsonDecode(resultAsString);
+        expect(result['args']['json'], equals('true'));
+        expect(
+          result['args']['auth'],
+          equals('initialAccessToken'),
+        ); // not added
+        expect(result['headers']['H1'], equals('value1'));
+        expect(
+          result['headers']['Authorization'],
+          equals('Bearer initialAccessToken'),
+        );
+        expect(
+          mainIsolateCallbackCounter,
+          equals(mainIsolateCallbackCounterAtStartOfTest + 1),
+        ); // called once
+        await File(path).delete();
+      },
+    );
 
-    test('default handler with refresh auth callback',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // refresh auth callback changes the original task, so only
-      // the known arguments and headers should be present, as well as the
-      // original auth argument and header (because no refresh took place)
-      auth.onAuthCallback = defaultOnAuth;
-      final task = DownloadTask(
+    test(
+      'default handler with refresh auth callback',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // refresh auth callback changes the original task, so only
+        // the known arguments and headers should be present, as well as the
+        // original auth argument and header (because no refresh took place)
+        auth.onAuthCallback = defaultOnAuth;
+        final task = DownloadTask(
           url: getTestUrl,
           urlQueryParameters: {'json': 'true'},
           headers: {'H1': 'value1'},
           filename: defaultFilename,
-          options: TaskOptions(auth: auth));
-      final path =
-          join((await getApplicationDocumentsDirectory()).path, task.filename);
-      expect((await FileDownloader().download(task)).status,
-          equals(TaskStatus.complete));
-      var resultAsString = await File(path).readAsString();
-      print(resultAsString);
-      var result = jsonDecode(resultAsString);
-      expect(result['args']['json'], equals('true'));
-      expect(result['args']['auth'], equals('new_access_token')); // not added
-      expect(result['headers']['H1'], equals('value1'));
-      expect(result['headers']['Authorization'],
-          equals('Bearer new_access_token'));
-      await File(path).delete();
-    });
+          options: TaskOptions(auth: auth),
+        );
+        final path = join(
+          (await getApplicationDocumentsDirectory()).path,
+          task.filename,
+        );
+        expect(
+          (await FileDownloader().download(task)).status,
+          equals(TaskStatus.complete),
+        );
+        var resultAsString = await File(path).readAsString();
+        print(resultAsString);
+        var result = jsonDecode(resultAsString);
+        expect(result['args']['json'], equals('true'));
+        expect(result['args']['auth'], equals('new_access_token')); // not added
+        expect(result['headers']['H1'], equals('value1'));
+        expect(
+          result['headers']['Authorization'],
+          equals('Bearer new_access_token'),
+        );
+        await File(path).delete();
+      },
+    );
   });
 }

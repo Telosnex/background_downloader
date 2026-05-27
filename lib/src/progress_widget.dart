@@ -159,9 +159,10 @@ class _DownloadProgressIndicatorState extends State<DownloadProgressIndicator> {
         isCollapsed = true; // only resets when all downloads finish
       }
     }
-    final itemsToShow = isExpanded
-        ? min(numActive, widget.maxExpandable)
-        : isCollapsed
+    final itemsToShow =
+        isExpanded
+            ? min(numActive, widget.maxExpandable)
+            : isCollapsed
             ? min(1, numActive)
             : numActive;
     return AnimatedSize(
@@ -169,15 +170,16 @@ class _DownloadProgressIndicatorState extends State<DownloadProgressIndicator> {
       alignment: Alignment.bottomCenter,
       child: switch (itemsToShow) {
         0 => Container(height: 0),
-        1 => isCollapsed
-            ? _CollapsedDownloadProgress(
+        1 =>
+          isCollapsed
+              ? _CollapsedDownloadProgress(
                 finishedTasks.length,
                 totalTasks.length,
                 widget.collapsedMessage,
                 widget.height,
                 widget.backgroundColor,
               )
-            : _DownloadProgressItem(
+              : _DownloadProgressItem(
                 activeTasks.first,
                 inProgress[activeTasks.first]!.$1,
                 widget.message,
@@ -188,12 +190,12 @@ class _DownloadProgressIndicatorState extends State<DownloadProgressIndicator> {
                 pausedTasks,
               ),
         _ => _ExpandedDownloadProgress(
-            activeTasks.take(widget.maxExpandable).toList(growable: false),
-            widget.message,
-            widget.height,
-            widget.backgroundColor,
-            inProgress,
-          ),
+          activeTasks.take(widget.maxExpandable).toList(growable: false),
+          widget.message,
+          widget.height,
+          widget.backgroundColor,
+          inProgress,
+        ),
       },
     );
   }
@@ -357,39 +359,40 @@ class _ExpandedDownloadProgress extends StatelessWidget {
           0: IntrinsicColumnWidth(),
           1: FlexColumnWidth(),
         },
-        children: tasks.map((task) {
-          return TableRow(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-            ),
-            children: [
-              SizedBox(
-                height: height,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8, right: 8),
-                    child: Text(
-                      message
-                          .replaceAll(
-                            _fileNameRegEx,
-                            unpack(task.filename).filename ?? task.filename,
-                          )
-                          .replaceAll(_metadataRegEx, task.metaData),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+        children:
+            tasks.map((task) {
+              return TableRow(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: LinearProgressIndicator(value: inProgress[task]!.$1),
-              ),
-            ],
-          );
-        }).toList(),
+                children: [
+                  SizedBox(
+                    height: height,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8, right: 8),
+                        child: Text(
+                          message
+                              .replaceAll(
+                                _fileNameRegEx,
+                                unpack(task.filename).filename ?? task.filename,
+                              )
+                              .replaceAll(_metadataRegEx, task.metaData),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: LinearProgressIndicator(value: inProgress[task]!.$1),
+                  ),
+                ],
+              );
+            }).toList(),
       ),
     );
   }

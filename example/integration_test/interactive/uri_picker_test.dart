@@ -19,9 +19,13 @@ void main() {
       print('directoryUri=$directoryUri');
       expect(directoryUri, isNotNull);
       final task = UriDownloadTask(
-          url: urlWithoutContentLength, directoryUri: directoryUri!);
+        url: urlWithoutContentLength,
+        directoryUri: directoryUri!,
+      );
       expect(
-          allDigitsRegex.hasMatch(task.filename), isTrue); // filename omitted
+        allDigitsRegex.hasMatch(task.filename),
+        isTrue,
+      ); // filename omitted
       expect(task.directoryUri, equals(directoryUri));
       final result = await FileDownloader().download(task);
       expect(result.status, equals(TaskStatus.complete));
@@ -46,9 +50,10 @@ void main() {
       final directoryUri = await FileDownloader().uri.pickDirectory();
       expect(directoryUri, isNotNull);
       final task = UriDownloadTask(
-          url: urlWithContentLength,
-          directoryUri: directoryUri!,
-          filename: DownloadTask.suggestedFilename);
+        url: urlWithContentLength,
+        directoryUri: directoryUri!,
+        filename: DownloadTask.suggestedFilename,
+      );
       expect(task.filename, equals(DownloadTask.suggestedFilename));
       expect(task.directoryUri, equals(directoryUri));
       final result = await FileDownloader().download(task);
@@ -74,17 +79,18 @@ void main() {
   group('Uploads via photo/video picker', () {
     test('upload a photo', () async {
       print('Pick a photo to upload');
-      final fileUri = await FileDownloader()
-          .uri
-          .pickFiles(startLocation: SharedStorage.images);
+      final fileUri = await FileDownloader().uri.pickFiles(
+        startLocation: SharedStorage.images,
+      );
       expect(fileUri, isNotNull);
       expect(fileUri!.length, equals(1));
       print(fileUri.first);
       final task = UriUploadTask(
-          url: uploadBinaryTestUrl,
-          fileUri: fileUri.first,
-          post: 'binary',
-          mimeType: 'image/jpeg');
+        url: uploadBinaryTestUrl,
+        fileUri: fileUri.first,
+        post: 'binary',
+        mimeType: 'image/jpeg',
+      );
       expect(task.fileUri, equals(fileUri.first));
       expect(task.mimeType, equals('image/jpeg'));
       final result = await FileDownloader().upload(task);
@@ -110,9 +116,9 @@ void main() {
 
     test('pick single photo (no upload) using pickFile', () async {
       print('Pick a photo to upload');
-      final fileUri = await FileDownloader()
-          .uri
-          .pickFile(startLocation: SharedStorage.images);
+      final fileUri = await FileDownloader().uri.pickFile(
+        startLocation: SharedStorage.images,
+      );
       expect(fileUri, isNotNull);
       print(fileUri);
       if (Platform.isIOS) {
@@ -124,12 +130,17 @@ void main() {
     test('pick multiple photos (no upload)', () async {
       print('Pick 2 photos');
       final fileUris = await FileDownloader().uri.pickFiles(
-          startLocation: SharedStorage.images, multipleAllowed: true);
+        startLocation: SharedStorage.images,
+        multipleAllowed: true,
+      );
       expect(fileUris, isNotNull);
       expect(fileUris!.length, equals(2));
       print(fileUris);
       final task = UriUploadTask(
-          url: uploadBinaryTestUrl, fileUri: fileUris.first, post: 'binary');
+        url: uploadBinaryTestUrl,
+        fileUri: fileUris.first,
+        post: 'binary',
+      );
       expect(task.fileUri, equals(fileUris.first));
       if (Platform.isIOS) {
         // on iOS, delete the local copies of the files
@@ -141,40 +152,50 @@ void main() {
 
     test('pick a video (no upload)', () async {
       print('Pick a video');
-      final fileUri = await FileDownloader()
-          .uri
-          .pickFiles(startLocation: SharedStorage.video);
+      final fileUri = await FileDownloader().uri.pickFiles(
+        startLocation: SharedStorage.video,
+      );
       expect(fileUri, isNotNull);
       expect(fileUri!.length, equals(1));
       final task = UriUploadTask(
-          url: uploadBinaryTestUrl, fileUri: fileUri.first, post: 'binary');
+        url: uploadBinaryTestUrl,
+        fileUri: fileUri.first,
+        post: 'binary',
+      );
       expect(task.fileUri, equals(fileUri.first));
     });
 
     test('pick multiple videos (no upload)', () async {
       print('Pick 2 videos');
-      final fileUri = await FileDownloader()
-          .uri
-          .pickFiles(startLocation: SharedStorage.video, multipleAllowed: true);
+      final fileUri = await FileDownloader().uri.pickFiles(
+        startLocation: SharedStorage.video,
+        multipleAllowed: true,
+      );
       expect(fileUri, isNotNull);
       expect(fileUri!.length, equals(2));
       final task = UriUploadTask(
-          url: uploadBinaryTestUrl, fileUri: fileUri.first, post: 'binary');
+        url: uploadBinaryTestUrl,
+        fileUri: fileUri.first,
+        post: 'binary',
+      );
       expect(task.fileUri, equals(fileUri.first));
     });
   });
 
   test('Persistence', () async {
     print('Pick a directory to store a file to download');
-    final directoryUri =
-        await FileDownloader().uri.pickDirectory(persistedUriPermission: true);
+    final directoryUri = await FileDownloader().uri.pickDirectory(
+      persistedUriPermission: true,
+    );
     print('directoryUri=$directoryUri');
     expect(directoryUri, isNotNull);
     if (Platform.isIOS) {
       expect(directoryUri!.scheme, equals('urlbookmark'));
     }
     final task = UriDownloadTask(
-        url: urlWithoutContentLength, directoryUri: directoryUri!);
+      url: urlWithoutContentLength,
+      directoryUri: directoryUri!,
+    );
     expect(allDigitsRegex.hasMatch(task.filename), isTrue); // filename omitted
     expect(task.directoryUri, equals(directoryUri));
     final result = await FileDownloader().download(task);
@@ -196,9 +217,9 @@ void main() {
 
   test('Activate URI', () async {
     print('Pick a photo to upload');
-    final fileUri = await FileDownloader()
-        .uri
-        .pickFile(startLocation: SharedStorage.images);
+    final fileUri = await FileDownloader().uri.pickFile(
+      startLocation: SharedStorage.images,
+    );
     print('Uri from picker: ${fileUri!}');
     if (Platform.isIOS) {
       expect(fileUri.scheme, equals('media'));

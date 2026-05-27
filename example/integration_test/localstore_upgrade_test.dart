@@ -16,12 +16,13 @@ void main() {
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((LogRecord rec) {
       debugPrint(
-          '${rec.loggerName}>${rec.level.name}: ${rec.time}: ${rec.message}');
+        '${rec.loggerName}>${rec.level.name}: ${rec.time}: ${rec.message}',
+      );
     });
     WidgetsFlutterBinding.ensureInitialized();
     for (var dir in [
       await getApplicationDocumentsDirectory(),
-      await getApplicationSupportDirectory()
+      await getApplicationSupportDirectory(),
     ]) {
       try {
         Directory(path.join(dir.path, tasksPath)).deleteSync(recursive: true);
@@ -29,8 +30,9 @@ void main() {
         debugPrint('$dir tasksPath was already deleted');
       }
       try {
-        Directory(path.join(dir.path, databaseMetadataPath))
-            .deleteSync(recursive: true);
+        Directory(
+          path.join(dir.path, databaseMetadataPath),
+        ).deleteSync(recursive: true);
       } catch (e) {
         debugPrint('$dir databaseMetadataPath was already deleted');
       }
@@ -40,41 +42,60 @@ void main() {
 
   tearDown(() async {});
 
-  testWidgets('upgrade from version 0',
-      timeout: const Timeout(Duration(minutes: 2)), (widgetTester) async {
-    final docDir = await getApplicationDocumentsDirectory();
-    final supportDir = await getApplicationSupportDirectory();
-    Directory(path.join(docDir.path, tasksPath)).createSync();
-    await File(path.join(docDir.path, tasksPath, 'test'))
-        .writeAsString('contents', flush: true);
-    expect(
-        File(path.join(docDir.path, tasksPath, 'test')).existsSync(), isTrue);
-    final _ = FileDownloader(); // triggers the initialization and migration
-    await Future.delayed(const Duration(milliseconds: 500));
-    // file 'test' in docDir should have been moved to supportDir
-    expect(
-        File(path.join(docDir.path, tasksPath, 'test')).existsSync(), isFalse);
-    expect(File(path.join(supportDir.path, tasksPath, 'test')).existsSync(),
-        isTrue);
-    final metaData = await Localstore.instance
-        .collection('backgroundDownloaderDatabase')
-        .doc('metaData')
-        .get();
-    final version = metaData?['version'] ?? 0;
-    expect(version, equals(1)); // BaseDownloader.databaseVersion
-    // now initialize again
-    // docDir and supportDir file should not be touched
-    final file2 = File(path.join(docDir.path, tasksPath, 'test2'));
-    Directory(path.join(docDir.path, tasksPath)).createSync();
-    await file2.writeAsString('contents2');
-    expect(
-        File(path.join(docDir.path, tasksPath, 'test2')).existsSync(), isTrue);
-    expect(
-        File(path.join(docDir.path, tasksPath, 'test2')).existsSync(), isTrue);
-    expect(File(path.join(supportDir.path, tasksPath, 'test2')).existsSync(),
-        isFalse);
-    expect(File(path.join(supportDir.path, tasksPath, 'test')).existsSync(),
-        isTrue);
-    debugPrint('Upgrade done');
-  });
+  testWidgets(
+    'upgrade from version 0',
+    timeout: const Timeout(Duration(minutes: 2)),
+    (widgetTester) async {
+      final docDir = await getApplicationDocumentsDirectory();
+      final supportDir = await getApplicationSupportDirectory();
+      Directory(path.join(docDir.path, tasksPath)).createSync();
+      await File(
+        path.join(docDir.path, tasksPath, 'test'),
+      ).writeAsString('contents', flush: true);
+      expect(
+        File(path.join(docDir.path, tasksPath, 'test')).existsSync(),
+        isTrue,
+      );
+      final _ = FileDownloader(); // triggers the initialization and migration
+      await Future.delayed(const Duration(milliseconds: 500));
+      // file 'test' in docDir should have been moved to supportDir
+      expect(
+        File(path.join(docDir.path, tasksPath, 'test')).existsSync(),
+        isFalse,
+      );
+      expect(
+        File(path.join(supportDir.path, tasksPath, 'test')).existsSync(),
+        isTrue,
+      );
+      final metaData =
+          await Localstore.instance
+              .collection('backgroundDownloaderDatabase')
+              .doc('metaData')
+              .get();
+      final version = metaData?['version'] ?? 0;
+      expect(version, equals(1)); // BaseDownloader.databaseVersion
+      // now initialize again
+      // docDir and supportDir file should not be touched
+      final file2 = File(path.join(docDir.path, tasksPath, 'test2'));
+      Directory(path.join(docDir.path, tasksPath)).createSync();
+      await file2.writeAsString('contents2');
+      expect(
+        File(path.join(docDir.path, tasksPath, 'test2')).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(path.join(docDir.path, tasksPath, 'test2')).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(path.join(supportDir.path, tasksPath, 'test2')).existsSync(),
+        isFalse,
+      );
+      expect(
+        File(path.join(supportDir.path, tasksPath, 'test')).existsSync(),
+        isTrue,
+      );
+      debugPrint('Upgrade done');
+    },
+  );
 }

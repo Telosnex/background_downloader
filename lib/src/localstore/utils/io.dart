@@ -32,14 +32,16 @@ final class Utils implements UtilsImpl {
     final previous = _locks[path] ?? Future.value();
     final controller = Completer<T>();
 
-    final newFuture = previous.then((_) async {
-      try {
-        final result = await action();
-        controller.complete(result);
-      } catch (e, st) {
-        controller.completeError(e, st);
-      }
-    }).catchError((_) {});
+    final newFuture = previous
+        .then((_) async {
+          try {
+            final result = await action();
+            controller.complete(result);
+          } catch (e, st) {
+            controller.completeError(e, st);
+          }
+        })
+        .catchError((_) {});
 
     _locks[path] = newFuture;
 
@@ -138,9 +140,10 @@ final class Utils implements UtilsImpl {
     final dbDir = await Localstore.instance.databaseDirectory;
     for (final e in entries) {
       final relativePath = p.relative(e.path, from: dbDir.path);
-      final path = Platform.isWindows
-          ? relativePath.replaceAll(p.separator, '/')
-          : relativePath;
+      final path =
+          Platform.isWindows
+              ? relativePath.replaceAll(p.separator, '/')
+              : relativePath;
 
       await _synchronized(path, () async {
         final file = await _getFile(path);
@@ -187,9 +190,10 @@ final class Utils implements UtilsImpl {
       for (var e in entries) {
         if (e is! File) continue;
         final relativePath = p.relative(e.path, from: dbDir.path);
-        final filePath = Platform.isWindows
-            ? relativePath.replaceAll(p.separator, '/')
-            : relativePath;
+        final filePath =
+            Platform.isWindows
+                ? relativePath.replaceAll(p.separator, '/')
+                : relativePath;
 
         // We use synchronized reading
         await _synchronized(filePath, () async {

@@ -19,10 +19,13 @@ void main() {
           } else if (Platform.isAndroid) {
             final androidVersion = await getAndroidVersion();
             expect(
-                status,
-                equals(androidVersion < 33
+              status,
+              equals(
+                androidVersion < 33
                     ? PermissionStatus.granted
-                    : PermissionStatus.denied));
+                    : PermissionStatus.denied,
+              ),
+            );
           } else {
             expect(status, equals(PermissionStatus.granted));
           }
@@ -30,10 +33,13 @@ void main() {
           if (Platform.isAndroid) {
             final androidVersion = await getAndroidVersion();
             expect(
-                status,
-                equals(androidVersion < 29
+              status,
+              equals(
+                androidVersion < 29
                     ? PermissionStatus.denied
-                    : PermissionStatus.granted));
+                    : PermissionStatus.granted,
+              ),
+            );
           } else {
             expect(status, equals(PermissionStatus.granted));
           }
@@ -65,10 +71,13 @@ void main() {
           if (Platform.isAndroid) {
             final androidVersion = await getAndroidVersion();
             expect(
-                status,
-                equals(androidVersion < 33
+              status,
+              equals(
+                androidVersion < 33
                     ? PermissionStatus.requestError
-                    : PermissionStatus.granted));
+                    : PermissionStatus.granted,
+              ),
+            );
           } else {
             expect(status, equals(PermissionStatus.granted));
           }
@@ -76,10 +85,13 @@ void main() {
           if (Platform.isAndroid) {
             final androidVersion = await getAndroidVersion();
             expect(
-                status,
-                equals(androidVersion > 29
+              status,
+              equals(
+                androidVersion > 29
                     ? PermissionStatus.requestError
-                    : PermissionStatus.granted));
+                    : PermissionStatus.granted,
+              ),
+            );
           } else {
             expect(status, equals(PermissionStatus.granted));
           }

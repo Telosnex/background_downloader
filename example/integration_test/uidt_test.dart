@@ -16,125 +16,153 @@ void main() {
   tearDown(uidtTearDown);
 
   group('UIDT Download Tests', () {
-    testWidgets('Download with pause and resume',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      var task = DownloadTask(
+    testWidgets(
+      'Download with pause and resume',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = DownloadTask(
           url: urlWithLongContentLength,
           filename: 'uidt_pause_test.bin',
           updates: Updates.statusAndProgress,
           allowPause: true,
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> runningCompleter = Completer();
-      Completer<void> pausedCompleter = Completer();
-      Completer<void> completeCompleter = Completer();
-      Completer<void> progressCompleter = Completer();
+        Completer<void> runningCompleter = Completer();
+        Completer<void> pausedCompleter = Completer();
+        Completer<void> completeCompleter = Completer();
+        Completer<void> progressCompleter = Completer();
 
-      listenToTask(task,
+        listenToTask(
+          task,
           statusCompleters: {
             TaskStatus.running: runningCompleter,
             TaskStatus.paused: pausedCompleter,
             TaskStatus.complete: completeCompleter,
           },
           progressCompleter: progressCompleter,
-          progressThreshold: 0.05);
+          progressThreshold: 0.05,
+        );
 
-      print('Enqueuing task ${task.taskId}');
-      expect(await FileDownloader().enqueue(task), isTrue);
+        print('Enqueuing task ${task.taskId}');
+        expect(await FileDownloader().enqueue(task), isTrue);
 
-      await runningCompleter.future;
-      await progressCompleter.future; // Wait for some progress
+        await runningCompleter.future;
+        await progressCompleter.future; // Wait for some progress
 
-      print('Pausing task');
-      expect(await FileDownloader().pause(task), isTrue);
-      await pausedCompleter.future;
+        print('Pausing task');
+        expect(await FileDownloader().pause(task), isTrue);
+        await pausedCompleter.future;
 
-      print('Resuming task');
-      expect(await FileDownloader().resume(task), isTrue);
-      await completeCompleter.future;
+        print('Resuming task');
+        expect(await FileDownloader().resume(task), isTrue);
+        await completeCompleter.future;
 
-      expect(File(await task.filePath()).existsSync(), isTrue);
-      await File(await task.filePath()).delete();
-    });
+        expect(File(await task.filePath()).existsSync(), isTrue);
+        await File(await task.filePath()).delete();
+      },
+    );
 
-    testWidgets('Download with cancel',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      var task = DownloadTask(
+    testWidgets(
+      'Download with cancel',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = DownloadTask(
           url: urlWithLongContentLength,
           filename: 'uidt_cancel_test.bin',
           updates: Updates.statusAndProgress,
           allowPause: true,
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> runningCompleter = Completer();
-      Completer<void> canceledCompleter = Completer();
-      Completer<void> progressCompleter = Completer();
+        Completer<void> runningCompleter = Completer();
+        Completer<void> canceledCompleter = Completer();
+        Completer<void> progressCompleter = Completer();
 
-      listenToTask(task,
+        listenToTask(
+          task,
           statusCompleters: {
             TaskStatus.running: runningCompleter,
             TaskStatus.canceled: canceledCompleter,
           },
           progressCompleter: progressCompleter,
-          progressThreshold: 0.01);
+          progressThreshold: 0.01,
+        );
 
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await runningCompleter.future;
-      await progressCompleter.future;
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await runningCompleter.future;
+        await progressCompleter.future;
 
-      expect(await FileDownloader().cancelTaskWithId(task.taskId), isTrue);
-      await canceledCompleter.future;
+        expect(await FileDownloader().cancelTaskWithId(task.taskId), isTrue);
+        await canceledCompleter.future;
 
-      expect(File(await task.filePath()).existsSync(), isFalse);
-    });
+        expect(File(await task.filePath()).existsSync(), isFalse);
+      },
+    );
 
-    testWidgets('Download with retries',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      // Using urlWithFailure to test retries
-      var task = DownloadTask(
+    testWidgets(
+      'Download with retries',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        // Using urlWithFailure to test retries
+        var task = DownloadTask(
           url: urlWithFailure,
           filename: 'uidt_retry_test.bin',
           updates: Updates.statusAndProgress,
           retries: 2,
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> waitingToRetryCompleter = Completer();
-      Completer<void> failedCompleter = Completer();
+        Completer<void> waitingToRetryCompleter = Completer();
+        Completer<void> failedCompleter = Completer();
 
-      listenToTask(task, statusCompleters: {
-        TaskStatus.waitingToRetry: waitingToRetryCompleter,
-        TaskStatus.failed: failedCompleter
-      });
+        listenToTask(
+          task,
+          statusCompleters: {
+            TaskStatus.waitingToRetry: waitingToRetryCompleter,
+            TaskStatus.failed: failedCompleter,
+          },
+        );
 
-      expect(await FileDownloader().enqueue(task), isTrue);
+        expect(await FileDownloader().enqueue(task), isTrue);
 
-      // It might take time to fail and retry
-      await waitingToRetryCompleter.future.timeout(const Duration(seconds: 30));
-      await failedCompleter.future.timeout(const Duration(minutes: 1));
-    });
+        // It might take time to fail and retry
+        await waitingToRetryCompleter.future.timeout(
+          const Duration(seconds: 30),
+        );
+        await failedCompleter.future.timeout(const Duration(minutes: 1));
+      },
+    );
   });
 
   group('UIDT Upload Tests', () {
-    testWidgets('Regular Upload', timeout: const Timeout(Duration(minutes: 2)),
-        (tester) async {
-      var task = UploadTask(
+    testWidgets(
+      'Regular Upload',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = UploadTask(
           url: uploadTestUrl,
           filename: uploadFilename,
           updates: Updates.statusAndProgress,
           group: 'uploadTest',
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> completeCompleter = Completer();
+        Completer<void> completeCompleter = Completer();
 
-      listenToTask(task,
-          statusCompleters: {TaskStatus.complete: completeCompleter});
+        listenToTask(
+          task,
+          statusCompleters: {TaskStatus.complete: completeCompleter},
+        );
 
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await completeCompleter.future;
-    });
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await completeCompleter.future;
+      },
+    );
 
-    testWidgets('Upload with cancel',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
+    testWidgets('Upload with cancel', timeout: const Timeout(Duration(minutes: 2)), (
+      tester,
+    ) async {
       final isDesktop =
           Platform.isMacOS || Platform.isWindows || Platform.isLinux;
       // On desktop, local loopback is extremely fast, so multipart uploads complete instantly
@@ -146,24 +174,27 @@ void main() {
       await bigFile.writeAsBytes(Uint8List(fileSize));
 
       var task = UploadTask(
-          url: isDesktop ? uploadBinaryTestUrl : uploadTestUrl,
-          filename: 'big_upload_file.bin',
-          post: isDesktop ? 'binary' : null,
-          updates: Updates.statusAndProgress,
-          group: 'uploadTest',
-          priority: 0);
+        url: isDesktop ? uploadBinaryTestUrl : uploadTestUrl,
+        filename: 'big_upload_file.bin',
+        post: isDesktop ? 'binary' : null,
+        updates: Updates.statusAndProgress,
+        group: 'uploadTest',
+        priority: 0,
+      );
 
       Completer<void> runningCompleter = Completer();
       Completer<void> canceledCompleter = Completer();
       Completer<void> progressCompleter = Completer();
 
-      listenToTask(task,
-          statusCompleters: {
-            TaskStatus.running: runningCompleter,
-            TaskStatus.canceled: canceledCompleter
-          },
-          progressCompleter: progressCompleter,
-          progressThreshold: 0.01);
+      listenToTask(
+        task,
+        statusCompleters: {
+          TaskStatus.running: runningCompleter,
+          TaskStatus.canceled: canceledCompleter,
+        },
+        progressCompleter: progressCompleter,
+        progressThreshold: 0.01,
+      );
 
       expect(await FileDownloader().enqueue(task), isTrue);
 
@@ -177,179 +208,219 @@ void main() {
   });
 
   group('UIDT Parallel Download Tests', () {
-    testWidgets('Regular parallel download',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      var task = ParallelDownloadTask(
+    testWidgets(
+      'Regular parallel download',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = ParallelDownloadTask(
           url: urlWithLongContentLength,
           filename: 'parallel_regular.bin',
           chunks: 3,
           updates: Updates.statusAndProgress,
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> completeCompleter = Completer();
+        Completer<void> completeCompleter = Completer();
 
-      listenToTask(task,
-          statusCompleters: {TaskStatus.complete: completeCompleter});
+        listenToTask(
+          task,
+          statusCompleters: {TaskStatus.complete: completeCompleter},
+        );
 
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await completeCompleter.future;
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await completeCompleter.future;
 
-      expect(File(await task.filePath()).existsSync(), isTrue);
-      await File(await task.filePath()).delete();
-    });
+        expect(File(await task.filePath()).existsSync(), isTrue);
+        await File(await task.filePath()).delete();
+      },
+    );
 
-    testWidgets('Parallel download with pause and resume',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      var task = ParallelDownloadTask(
+    testWidgets(
+      'Parallel download with pause and resume',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = ParallelDownloadTask(
           url: urlWithLongContentLength,
           filename: 'parallel_pause.bin',
           chunks: 3,
           updates: Updates.statusAndProgress,
           allowPause: true,
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> runningCompleter = Completer();
-      Completer<void> pausedCompleter = Completer();
-      Completer<void> completeCompleter = Completer();
-      Completer<void> progressCompleter = Completer();
+        Completer<void> runningCompleter = Completer();
+        Completer<void> pausedCompleter = Completer();
+        Completer<void> completeCompleter = Completer();
+        Completer<void> progressCompleter = Completer();
 
-      listenToTask(task,
+        listenToTask(
+          task,
           statusCompleters: {
             TaskStatus.running: runningCompleter,
             TaskStatus.paused: pausedCompleter,
             TaskStatus.complete: completeCompleter,
           },
           progressCompleter: progressCompleter,
-          progressThreshold: 0.05);
+          progressThreshold: 0.05,
+        );
 
-      print('Enqueuing task ${task.taskId}');
-      expect(await FileDownloader().enqueue(task), isTrue);
+        print('Enqueuing task ${task.taskId}');
+        expect(await FileDownloader().enqueue(task), isTrue);
 
-      await runningCompleter.future;
-      await progressCompleter.future;
+        await runningCompleter.future;
+        await progressCompleter.future;
 
-      print('Pausing task');
-      expect(await FileDownloader().pause(task), isTrue);
-      await pausedCompleter.future;
-      print('Status is now paused, waiting a moment...');
-      await Future.delayed(const Duration(seconds: 2));
+        print('Pausing task');
+        expect(await FileDownloader().pause(task), isTrue);
+        await pausedCompleter.future;
+        print('Status is now paused, waiting a moment...');
+        await Future.delayed(const Duration(seconds: 2));
 
-      print('Resuming task');
-      expect(await FileDownloader().resume(task), isTrue);
-      await completeCompleter.future;
+        print('Resuming task');
+        expect(await FileDownloader().resume(task), isTrue);
+        await completeCompleter.future;
 
-      expect(File(await task.filePath()).existsSync(), isTrue);
-      await File(await task.filePath()).delete();
-    });
+        expect(File(await task.filePath()).existsSync(), isTrue);
+        await File(await task.filePath()).delete();
+      },
+    );
 
-    testWidgets('Parallel download with cancel',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      var task = ParallelDownloadTask(
+    testWidgets(
+      'Parallel download with cancel',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = ParallelDownloadTask(
           url: urlWithLongContentLength,
           filename: 'parallel_cancel.bin',
           chunks: 3,
           updates: Updates.statusAndProgress,
-          priority: 0);
+          priority: 0,
+        );
 
-      Completer<void> runningCompleter = Completer();
-      Completer<void> canceledCompleter = Completer();
-      Completer<void> progressCompleter = Completer();
+        Completer<void> runningCompleter = Completer();
+        Completer<void> canceledCompleter = Completer();
+        Completer<void> progressCompleter = Completer();
 
-      listenToTask(task,
+        listenToTask(
+          task,
           statusCompleters: {
             TaskStatus.running: runningCompleter,
             TaskStatus.canceled: canceledCompleter,
           },
           progressCompleter: progressCompleter,
-          progressThreshold: 0.01);
+          progressThreshold: 0.01,
+        );
 
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await runningCompleter.future;
-      await progressCompleter.future;
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await runningCompleter.future;
+        await progressCompleter.future;
 
-      expect(await FileDownloader().cancelTasksWithIds([task.taskId]), isTrue);
-      await canceledCompleter.future;
+        expect(
+          await FileDownloader().cancelTasksWithIds([task.taskId]),
+          isTrue,
+        );
+        await canceledCompleter.future;
 
-      expect(File(await task.filePath()).existsSync(), isFalse);
-    });
+        expect(File(await task.filePath()).existsSync(), isFalse);
+      },
+    );
   });
 
   group('UIDT DataTask Tests', () {
-    testWidgets('DataTask execution',
-        timeout: const Timeout(Duration(minutes: 2)), (tester) async {
-      var task =
-          DataTask(url: dataTaskGetUrl, updates: Updates.status, priority: 0);
+    testWidgets(
+      'DataTask execution',
+      timeout: const Timeout(Duration(minutes: 2)),
+      (tester) async {
+        var task = DataTask(
+          url: dataTaskGetUrl,
+          updates: Updates.status,
+          priority: 0,
+        );
 
-      Completer<void> completeCompleter = Completer();
-      String? responseBody;
+        Completer<void> completeCompleter = Completer();
+        String? responseBody;
 
-      listenToTask(task,
+        listenToTask(
+          task,
           statusCompleters: {TaskStatus.complete: completeCompleter},
           callback: (update) {
-        if (update is TaskStatusUpdate &&
-            update.status == TaskStatus.complete) {
-          responseBody = update.responseBody;
-        }
-      });
+            if (update is TaskStatusUpdate &&
+                update.status == TaskStatus.complete) {
+              responseBody = update.responseBody;
+            }
+          },
+        );
 
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await completeCompleter.future;
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await completeCompleter.future;
 
-      expect(responseBody, isNotNull);
-    });
+        expect(responseBody, isNotNull);
+      },
+    );
   });
 }
 
 /// Helper to listen to task updates and complete completers
-void listenToTask(Task task,
-    {Map<TaskStatus, Completer<void>>? statusCompleters,
-    Completer<void>? progressCompleter,
-    double progressThreshold = 0.0,
-    Function(TaskUpdate)? callback}) {
-  listenToTasks([task],
-      statusCompleters:
-          statusCompleters != null ? {task: statusCompleters} : null,
-      progressCompleters:
-          progressCompleter != null ? {task: progressCompleter} : null,
-      progressThreshold: progressThreshold,
-      callback: callback);
+void listenToTask(
+  Task task, {
+  Map<TaskStatus, Completer<void>>? statusCompleters,
+  Completer<void>? progressCompleter,
+  double progressThreshold = 0.0,
+  Function(TaskUpdate)? callback,
+}) {
+  listenToTasks(
+    [task],
+    statusCompleters:
+        statusCompleters != null ? {task: statusCompleters} : null,
+    progressCompleters:
+        progressCompleter != null ? {task: progressCompleter} : null,
+    progressThreshold: progressThreshold,
+    callback: callback,
+  );
 }
 
 /// Helper to listen to multiple tasks in the same group
-void listenToTasks(List<Task> tasks,
-    {Map<Task, Map<TaskStatus, Completer<void>>>? statusCompleters,
-    Map<Task, Completer<void>>? progressCompleters,
-    double progressThreshold = 0.0,
-    Function(TaskUpdate)? callback}) {
+void listenToTasks(
+  List<Task> tasks, {
+  Map<Task, Map<TaskStatus, Completer<void>>>? statusCompleters,
+  Map<Task, Completer<void>>? progressCompleters,
+  double progressThreshold = 0.0,
+  Function(TaskUpdate)? callback,
+}) {
   final groups = tasks.map((e) => e.group).toSet();
   for (final group in groups) {
     FileDownloader().registerCallbacks(
-        group: group,
-        taskStatusCallback: (update) {
-          final task = tasks.firstWhere((t) => t.taskId == update.task.taskId,
-              orElse: () => update.task);
-          if (tasks.any((t) => t.taskId == update.task.taskId)) {
-            print('[${update.task.taskId}] Status: ${update.status}');
-            final completer = statusCompleters?[task]?[update.status];
+      group: group,
+      taskStatusCallback: (update) {
+        final task = tasks.firstWhere(
+          (t) => t.taskId == update.task.taskId,
+          orElse: () => update.task,
+        );
+        if (tasks.any((t) => t.taskId == update.task.taskId)) {
+          print('[${update.task.taskId}] Status: ${update.status}');
+          final completer = statusCompleters?[task]?[update.status];
+          if (completer != null && !completer.isCompleted) {
+            completer.complete();
+          }
+          callback?.call(update);
+        }
+      },
+      taskProgressCallback: (update) {
+        final task = tasks.firstWhere(
+          (t) => t.taskId == update.task.taskId,
+          orElse: () => update.task,
+        );
+        if (tasks.any((t) => t.taskId == update.task.taskId)) {
+          if (update.progress > progressThreshold) {
+            final completer = progressCompleters?[task];
             if (completer != null && !completer.isCompleted) {
               completer.complete();
             }
-            callback?.call(update);
           }
-        },
-        taskProgressCallback: (update) {
-          final task = tasks.firstWhere((t) => t.taskId == update.task.taskId,
-              orElse: () => update.task);
-          if (tasks.any((t) => t.taskId == update.task.taskId)) {
-            if (update.progress > progressThreshold) {
-              final completer = progressCompleters?[task];
-              if (completer != null && !completer.isCompleted) {
-                completer.complete();
-              }
-            }
-            callback?.call(update);
-          }
-        });
+          callback?.call(update);
+        }
+      },
+    );
   }
 }
 
@@ -358,9 +429,10 @@ Future<void> uidtSetup() async {
   await FileDownloader().reset(group: 'uploadTest');
 
   FileDownloader().configureNotification(
-      running: const TaskNotification('Running', 'Task is downloading'),
-      complete: const TaskNotification('Complete', 'Task is finished'),
-      progressBar: true);
+    running: const TaskNotification('Running', 'Task is downloading'),
+    complete: const TaskNotification('Complete', 'Task is finished'),
+    progressBar: true,
+  );
 }
 
 Future<void> uidtTearDown() async {

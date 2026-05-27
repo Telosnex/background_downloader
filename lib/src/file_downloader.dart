@@ -107,13 +107,12 @@ interface class FileDownloader {
     dynamic androidConfig,
     dynamic iOSConfig,
     dynamic desktopConfig,
-  }) =>
-      _downloader.configure(
-        globalConfig: globalConfig,
-        androidConfig: androidConfig,
-        iOSConfig: iOSConfig,
-        desktopConfig: desktopConfig,
-      );
+  }) => _downloader.configure(
+    globalConfig: globalConfig,
+    androidConfig: androidConfig,
+    iOSConfig: iOSConfig,
+    desktopConfig: desktopConfig,
+  );
 
   /// Register status or progress callbacks to monitor download progress, and
   /// [TaskNotificationTapCallback] to respond to user tapping a notification.
@@ -266,14 +265,13 @@ interface class FileDownloader {
     void Function(double)? onProgress,
     void Function(Duration)? onElapsedTime,
     Duration? elapsedTimeInterval,
-  }) =>
-      _downloader.enqueueAndAwait(
-        task,
-        onStatus: onStatus,
-        onProgress: onProgress,
-        onElapsedTime: onElapsedTime,
-        elapsedTimeInterval: elapsedTimeInterval,
-      );
+  }) => _downloader.enqueueAndAwait(
+    task,
+    onStatus: onStatus,
+    onProgress: onProgress,
+    onElapsedTime: onElapsedTime,
+    elapsedTimeInterval: elapsedTimeInterval,
+  );
 
   /// Upload a file and return the final [TaskStatusUpdate]
   ///
@@ -316,14 +314,13 @@ interface class FileDownloader {
     void Function(double)? onProgress,
     void Function(Duration)? onElapsedTime,
     Duration? elapsedTimeInterval,
-  }) =>
-      _downloader.enqueueAndAwait(
-        task,
-        onStatus: onStatus,
-        onProgress: onProgress,
-        onElapsedTime: onElapsedTime,
-        elapsedTimeInterval: elapsedTimeInterval,
-      );
+  }) => _downloader.enqueueAndAwait(
+    task,
+    onStatus: onStatus,
+    onProgress: onProgress,
+    onElapsedTime: onElapsedTime,
+    elapsedTimeInterval: elapsedTimeInterval,
+  );
 
   /// Transmit data in the [DataTask] and receive the response
   ///
@@ -347,13 +344,12 @@ interface class FileDownloader {
     void Function(TaskStatus)? onStatus,
     void Function(Duration)? onElapsedTime,
     Duration? elapsedTimeInterval,
-  }) =>
-      _downloader.enqueueAndAwait(
-        task,
-        onStatus: onStatus,
-        onElapsedTime: onElapsedTime,
-        elapsedTimeInterval: elapsedTimeInterval,
-      );
+  }) => _downloader.enqueueAndAwait(
+    task,
+    onStatus: onStatus,
+    onElapsedTime: onElapsedTime,
+    elapsedTimeInterval: elapsedTimeInterval,
+  );
 
   /// Enqueues a list of files to download and returns when all downloads
   /// have finished (successfully or otherwise). The returned value is a
@@ -388,15 +384,14 @@ interface class FileDownloader {
     TaskProgressCallback? taskProgressCallback,
     void Function(Duration)? onElapsedTime,
     Duration? elapsedTimeInterval,
-  }) =>
-      _downloader.enqueueAndAwaitBatch(
-        tasks,
-        batchProgressCallback: batchProgressCallback,
-        taskStatusCallback: taskStatusCallback,
-        taskProgressCallback: taskProgressCallback,
-        onElapsedTime: onElapsedTime,
-        elapsedTimeInterval: elapsedTimeInterval,
-      );
+  }) => _downloader.enqueueAndAwaitBatch(
+    tasks,
+    batchProgressCallback: batchProgressCallback,
+    taskStatusCallback: taskStatusCallback,
+    taskProgressCallback: taskProgressCallback,
+    onElapsedTime: onElapsedTime,
+    elapsedTimeInterval: elapsedTimeInterval,
+  );
 
   /// Enqueues a list of files to upload and returns when all uploads
   /// have finished (successfully or otherwise). The returned value is a
@@ -431,15 +426,14 @@ interface class FileDownloader {
     TaskProgressCallback? taskProgressCallback,
     void Function(Duration)? onElapsedTime,
     Duration? elapsedTimeInterval,
-  }) =>
-      _downloader.enqueueAndAwaitBatch(
-        tasks,
-        batchProgressCallback: batchProgressCallback,
-        taskStatusCallback: taskStatusCallback,
-        taskProgressCallback: taskProgressCallback,
-        onElapsedTime: onElapsedTime,
-        elapsedTimeInterval: elapsedTimeInterval,
-      );
+  }) => _downloader.enqueueAndAwaitBatch(
+    tasks,
+    batchProgressCallback: batchProgressCallback,
+    taskStatusCallback: taskStatusCallback,
+    taskProgressCallback: taskProgressCallback,
+    onElapsedTime: onElapsedTime,
+    elapsedTimeInterval: elapsedTimeInterval,
+  );
 
   /// Resets the downloader by cancelling all ongoing tasks within
   /// the provided [group]
@@ -470,9 +464,7 @@ interface class FileDownloader {
         group: group,
         includeTasksWaitingToRetry: includeTasksWaitingToRetry,
         allGroups: allGroups,
-      ))
-          .map((task) => task.taskId)
-          .toList();
+      )).map((task) => task.taskId).toList();
 
   /// Returns a list of all tasks currently active in this [group]
   ///
@@ -487,8 +479,7 @@ interface class FileDownloader {
     String group = defaultGroup,
     bool includeTasksWaitingToRetry = true,
     bool allGroups = false,
-  }) =>
-      _downloader.allTasks(group, includeTasksWaitingToRetry, allGroups);
+  }) => _downloader.allTasks(group, includeTasksWaitingToRetry, allGroups);
 
   /// Returns true if tasks in this [group] are finished
   ///
@@ -680,15 +671,16 @@ interface class FileDownloader {
     final missingTasks = <Task>{};
     final databaseTasks = await database.allRecords();
     // find missing enqueued/running tasks
-    final enqueuedOrRunningDatabaseTasks = databaseTasks
-        .where(
-          (record) => const [
-            TaskStatus.enqueued,
-            TaskStatus.running,
-          ].contains(record.status),
-        )
-        .map((record) => record.task)
-        .toSet();
+    final enqueuedOrRunningDatabaseTasks =
+        databaseTasks
+            .where(
+              (record) => const [
+                TaskStatus.enqueued,
+                TaskStatus.running,
+              ].contains(record.status),
+            )
+            .map((record) => record.task)
+            .toSet();
     final nativeTasks = Set<Task>.from(
       await FileDownloader().allTasks(allGroups: true),
     );
@@ -779,13 +771,13 @@ interface class FileDownloader {
     final results = <Task>[];
     final tasksToResume = switch ((tasks, group)) {
       (Iterable<DownloadTask> tasks, null) => tasks,
-      (null, String group) =>
-        (await _downloader.getPausedTasks()).whereType<DownloadTask>().where(
-              (task) => task.group == group,
-            ),
+      (null, String group) => (await _downloader.getPausedTasks())
+          .whereType<DownloadTask>()
+          .where((task) => task.group == group),
       (null, null) =>
         (await _downloader.getPausedTasks()).whereType<DownloadTask>(),
-      _ => throw AssertionError(
+      _ =>
+        throw AssertionError(
           "Either 'tasks' or 'group' must be provided, or neither, but not both.",
         ),
     };
@@ -810,8 +802,7 @@ interface class FileDownloader {
   Future<bool> requireWiFi(
     RequireWiFi requirement, {
     final rescheduleRunningTasks = true,
-  }) =>
-      _downloader.requireWiFi(requirement, rescheduleRunningTasks);
+  }) => _downloader.requireWiFi(requirement, rescheduleRunningTasks);
 
   /// Returns the current global setting for requiring WiFi
   Future<RequireWiFi> getRequireWiFiSetting() =>
@@ -1059,11 +1050,11 @@ interface class FileDownloader {
   /// The request is executed on an Isolate, to ensure minimal interference
   /// with the main Isolate
   Future<http.Response> request(Request request) => compute(_doRequest, (
-        request,
-        DesktopDownloader.requestTimeout,
-        DesktopDownloader.proxy,
-        DesktopDownloader.bypassTLSCertificateValidation,
-      ));
+    request,
+    DesktopDownloader.requestTimeout,
+    DesktopDownloader.proxy,
+    DesktopDownloader.bypassTLSCertificateValidation,
+  ));
 
   /// Move the file represented by the [task] to a shared storage
   /// [destination] and potentially a [directory] within that destination. If
@@ -1090,13 +1081,12 @@ interface class FileDownloader {
     SharedStorage destination, {
     String directory = '',
     String? mimeType,
-  }) async =>
-      moveFileToSharedStorage(
-        await task.filePath(),
-        destination,
-        directory: directory,
-        mimeType: mimeType,
-      );
+  }) async => moveFileToSharedStorage(
+    await task.filePath(),
+    destination,
+    directory: directory,
+    mimeType: mimeType,
+  );
 
   /// Move the file represented by [filePath] to a shared storage
   /// [destination] and potentially a [directory] within that destination. If
@@ -1123,13 +1113,12 @@ interface class FileDownloader {
     SharedStorage destination, {
     String directory = '',
     String? mimeType,
-  }) async =>
-      _downloader.moveToSharedStorage(
-        filePath,
-        destination,
-        directory,
-        mimeType,
-      );
+  }) async => _downloader.moveToSharedStorage(
+    filePath,
+    destination,
+    directory,
+    mimeType,
+  );
 
   /// Returns the filePath to the file represented by [filePath] in shared
   /// storage [destination] and potentially a [directory] within that
@@ -1145,8 +1134,7 @@ interface class FileDownloader {
     String filePath,
     SharedStorage destination, {
     String directory = '',
-  }) async =>
-      _downloader.pathInSharedStorage(filePath, destination, directory);
+  }) async => _downloader.pathInSharedStorage(filePath, destination, directory);
 
   /// Open the file represented by [task] or [filePath] using the application
   /// available on the platform.
@@ -1214,26 +1202,26 @@ Future<http.Response> _doRequest(
       response = await switch (request.httpRequestMethod) {
         'GET' => client.get(Uri.parse(request.url), headers: request.headers),
         'POST' => client.post(
-            Uri.parse(request.url),
-            headers: request.headers,
-            body: request.post,
-          ),
+          Uri.parse(request.url),
+          headers: request.headers,
+          body: request.post,
+        ),
         'HEAD' => client.head(Uri.parse(request.url), headers: request.headers),
         'PUT' => client.put(
-            Uri.parse(request.url),
-            headers: request.headers,
-            body: request.post,
-          ),
+          Uri.parse(request.url),
+          headers: request.headers,
+          body: request.post,
+        ),
         'DELETE' => client.delete(
-            Uri.parse(request.url),
-            headers: request.headers,
-            body: request.post,
-          ),
+          Uri.parse(request.url),
+          headers: request.headers,
+          body: request.post,
+        ),
         'PATCH' => client.patch(
-            Uri.parse(request.url),
-            headers: request.headers,
-            body: request.post,
-          ),
+          Uri.parse(request.url),
+          headers: request.headers,
+          body: request.post,
+        ),
         _ => Future.value(response),
       };
       if ([

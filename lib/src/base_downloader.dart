@@ -121,11 +121,9 @@ abstract base class BaseDownloader {
       TargetPlatform.iOS => IOSDownloader(),
       TargetPlatform.linux ||
       TargetPlatform.macOS ||
-      TargetPlatform.windows =>
-        DesktopDownloader(),
-      _ => throw ArgumentError(
-          'Platform $defaultTargetPlatform is not supported',
-        ),
+      TargetPlatform.windows => DesktopDownloader(),
+      _ =>
+        throw ArgumentError('Platform $defaultTargetPlatform is not supported'),
     };
     instance._storage = persistentStorage;
     instance.database = database;
@@ -141,15 +139,17 @@ abstract base class BaseDownloader {
   @mustCallSuper
   Future<void> initialize() async {
     await _storage.initialize();
-    _databaseUpdates.stream.asyncMap((data) async {
-      await _consumeUpdateTaskInDatabase(
-        data.$1,
-        data.$2,
-        data.$3,
-        data.$4,
-        data.$5,
-      );
-    }).listen((_) {});
+    _databaseUpdates.stream
+        .asyncMap((data) async {
+          await _consumeUpdateTaskInDatabase(
+            data.$1,
+            data.$2,
+            data.$3,
+            data.$4,
+            data.$5,
+          );
+        })
+        .listen((_) {});
     _readyCompleter.complete(true);
   }
 
@@ -303,9 +303,10 @@ abstract base class BaseDownloader {
       _taskProgressCallbacks[task.taskId] = taskProgressCallback;
     }
     // make sure the `updates` field is set correctly
-    final requiredUpdates = onProgress != null || taskProgressCallback != null
-        ? Updates.statusAndProgress
-        : Updates.status;
+    final requiredUpdates =
+        onProgress != null || taskProgressCallback != null
+            ? Updates.statusAndProgress
+            : Updates.status;
     final Task taskToEnqueue;
     if (task.updates != requiredUpdates) {
       log.warning(
@@ -490,7 +491,8 @@ abstract base class BaseDownloader {
       (Iterable<Task> tasks, null) => tasks,
       (null, String group) => await FileDownloader().allTasks(group: group),
       (null, null) => await FileDownloader().allTasks(),
-      _ => throw AssertionError(
+      _ =>
+        throw AssertionError(
           "Either 'tasks' or 'group' must be provided, or neither, but not both.",
         ),
     };
@@ -519,10 +521,8 @@ abstract base class BaseDownloader {
               jsonDecode(resumeData.data, reviver: Chunk.listReviver),
             );
             for (final chunk in chunks) {
-              final tempFilePath = (await getResumeData(
-                chunk.task.taskId,
-              ))
-                  ?.tempFilepath;
+              final tempFilePath =
+                  (await getResumeData(chunk.task.taskId))?.tempFilepath;
               if (tempFilePath != null) {
                 try {
                   await File(tempFilePath).delete();
@@ -627,14 +627,15 @@ abstract base class BaseDownloader {
     String? group,
   }) async {
     final tasksToPause = switch ((tasks, group)) {
-      (Iterable<DownloadTask> tasks, null) => tasks,
-      (null, String group) =>
-        (await FileDownloader().allTasks(group: group)) as Iterable<Task>,
-      (null, null) => (await FileDownloader().allTasks()) as Iterable<Task>,
-      _ => throw AssertionError(
-          "Either 'tasks' or 'group' must be provided, or neither, but not both.",
-        ),
-    }
+          (Iterable<DownloadTask> tasks, null) => tasks,
+          (null, String group) =>
+            (await FileDownloader().allTasks(group: group)) as Iterable<Task>,
+          (null, null) => (await FileDownloader().allTasks()) as Iterable<Task>,
+          _ =>
+            throw AssertionError(
+              "Either 'tasks' or 'group' must be provided, or neither, but not both.",
+            ),
+        }
         .whereType<DownloadTask>()
         .where((task) => task.allowPause && task.post == null)
         .toList(growable: false);

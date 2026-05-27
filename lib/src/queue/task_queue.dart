@@ -174,8 +174,9 @@ class MemoryTaskQueue implements TaskQueue {
       _activeByGroup.clear();
     } else {
       removeTasksWithGroup(group);
-      final tasksToRemove =
-          enqueued.where((task) => task.group != group).toList(growable: false);
+      final tasksToRemove = enqueued
+          .where((task) => task.group != group)
+          .toList(growable: false);
       for (final task in tasksToRemove) {
         if (enqueued.remove(task)) {
           _decrementCounts(task);
@@ -308,9 +309,10 @@ class MemoryTaskQueue implements TaskQueue {
   int get numWaiting => waiting.length;
 
   /// Number of tasks waiting to be enqueued in [group]
-  int numWaitingWithGroup(String group) => waiting.unorderedElements
-      .where((element) => element.group == group)
-      .length;
+  int numWaitingWithGroup(String group) =>
+      waiting.unorderedElements
+          .where((element) => element.group == group)
+          .length;
 
   /// Stream with [Task]s that failed to enqueue correctly
   Stream<Task> get enqueueErrors => _enqueueErrorsStreamController.stream;

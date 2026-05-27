@@ -22,10 +22,14 @@ final db = LocalStorePersistentStorage();
 final database = Database(db);
 
 Future<void> deleteAllTaskDataFromFileSystem() async {
-  final docDirTasksDir =
-      path.join((await getApplicationDocumentsDirectory()).path, tasksPath);
-  final supportDirTasksDir =
-      path.join((await getApplicationSupportDirectory()).path, tasksPath);
+  final docDirTasksDir = path.join(
+    (await getApplicationDocumentsDirectory()).path,
+    tasksPath,
+  );
+  final supportDirTasksDir = path.join(
+    (await getApplicationSupportDirectory()).path,
+    tasksPath,
+  );
   try {
     await Directory(docDirTasksDir).delete(recursive: true);
   } catch (e) {
@@ -43,7 +47,8 @@ void main() {
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((LogRecord rec) {
       debugPrint(
-          '${rec.loggerName}>${rec.level.name}: ${rec.time}: ${rec.message}');
+        '${rec.loggerName}>${rec.level.name}: ${rec.time}: ${rec.message}',
+      );
     });
     WidgetsFlutterBinding.ensureInitialized();
     await deleteAllTaskDataFromFileSystem();
@@ -55,8 +60,9 @@ void main() {
     await db.clearCache();
   });
 
-  testWidgets('updateRecord', timeout: const Timeout(Duration(minutes: 2)),
-      (tester) async {
+  testWidgets('updateRecord', timeout: const Timeout(Duration(minutes: 2)), (
+    tester,
+  ) async {
     await database.updateRecord(record);
     final records = await db.retrieveAll(tasksPath);
     expect(records.values.length, equals(1));
@@ -74,8 +80,9 @@ void main() {
     expect(File(path.join(docDir.path, filePath)).existsSync(), isTrue);
   });
 
-  testWidgets('allRecords', timeout: const Timeout(Duration(minutes: 2)),
-      (widgetTester) async {
+  testWidgets('allRecords', timeout: const Timeout(Duration(minutes: 2)), (
+    widgetTester,
+  ) async {
     await database.updateRecord(record);
     await database.updateRecord(record2);
     final result = await database.allRecords();
@@ -98,8 +105,9 @@ void main() {
     expect(result3.first, equals(record3));
   });
 
-  testWidgets('recordForId', timeout: const Timeout(Duration(minutes: 2)),
-      (widgetTester) async {
+  testWidgets('recordForId', timeout: const Timeout(Duration(minutes: 2)), (
+    widgetTester,
+  ) async {
     await database.updateRecord(record);
     await database.updateRecord(record2);
     final r = await database.recordForId(record.taskId);
@@ -111,8 +119,9 @@ void main() {
     expect(r3, isNull);
   });
 
-  testWidgets('deleteRecords', timeout: const Timeout(Duration(minutes: 2)),
-      (widgetTester) async {
+  testWidgets('deleteRecords', timeout: const Timeout(Duration(minutes: 2)), (
+    widgetTester,
+  ) async {
     await database.updateRecord(record);
     await database.updateRecord(record2);
     final r = await database.recordForId(record.taskId);
@@ -129,63 +138,75 @@ void main() {
     expect(r4, isNull);
   });
 
-  testWidgets('deleteRecordsWithIds',
-      timeout: const Timeout(Duration(minutes: 2)), (widgetTester) async {
-    await database.updateRecord(record);
-    await database.updateRecord(record2);
-    await database.deleteRecordWithId(record.taskId);
-    final r = await database.recordForId(record.taskId);
-    expect(r, isNull);
-    final r2 = await database.recordForId(record2.taskId);
-    expect(r2, equals(record2));
-  });
+  testWidgets(
+    'deleteRecordsWithIds',
+    timeout: const Timeout(Duration(minutes: 2)),
+    (widgetTester) async {
+      await database.updateRecord(record);
+      await database.updateRecord(record2);
+      await database.deleteRecordWithId(record.taskId);
+      final r = await database.recordForId(record.taskId);
+      expect(r, isNull);
+      final r2 = await database.recordForId(record2.taskId);
+      expect(r2, equals(record2));
+    },
+  );
 
-  test('rescheduleMissingTasks', timeout: const Timeout(Duration(minutes: 2)),
-      () async {
-    expect(await FileDownloader().allTasks(), isEmpty);
-    // without task tracking activated, throws assertionError
-    expect(() async => await FileDownloader().rescheduleKilledTasks(),
-        throwsAssertionError);
-    await FileDownloader().trackTasks();
-    // test empty
-    final result = await FileDownloader().rescheduleKilledTasks();
-    expect(result.$1, isEmpty);
-    expect(result.$2, isEmpty);
-    // add a record to the database that is not enqueued
-    await FileDownloader().database.updateRecord(record);
-    final result2 = await FileDownloader().rescheduleKilledTasks();
-    expect(result2.$1.length, equals(1));
-    expect(result2.$2, isEmpty);
-    expect(result2.$1.first.taskId, equals(task.taskId));
-    final allTasks = await FileDownloader().allTasks();
-    expect(allTasks.first.taskId, equals(task.taskId));
-    await Future.delayed(const Duration(seconds: 2));
-    expect(await FileDownloader().allTasks(), isEmpty);
-    // add a record to the database that is also enqueued
-    expect(await FileDownloader().enqueue(task2), isTrue);
-    expect(await FileDownloader().database.allRecords(), isNotEmpty);
-    final result3 = await FileDownloader().rescheduleKilledTasks();
-    expect(result3.$1, isEmpty);
-    expect(result3.$2, isEmpty);
-  });
+  test(
+    'rescheduleMissingTasks',
+    timeout: const Timeout(Duration(minutes: 2)),
+    () async {
+      expect(await FileDownloader().allTasks(), isEmpty);
+      // without task tracking activated, throws assertionError
+      expect(
+        () async => await FileDownloader().rescheduleKilledTasks(),
+        throwsAssertionError,
+      );
+      await FileDownloader().trackTasks();
+      // test empty
+      final result = await FileDownloader().rescheduleKilledTasks();
+      expect(result.$1, isEmpty);
+      expect(result.$2, isEmpty);
+      // add a record to the database that is not enqueued
+      await FileDownloader().database.updateRecord(record);
+      final result2 = await FileDownloader().rescheduleKilledTasks();
+      expect(result2.$1.length, equals(1));
+      expect(result2.$2, isEmpty);
+      expect(result2.$1.first.taskId, equals(task.taskId));
+      final allTasks = await FileDownloader().allTasks();
+      expect(allTasks.first.taskId, equals(task.taskId));
+      await Future.delayed(const Duration(seconds: 2));
+      expect(await FileDownloader().allTasks(), isEmpty);
+      // add a record to the database that is also enqueued
+      expect(await FileDownloader().enqueue(task2), isTrue);
+      expect(await FileDownloader().database.allRecords(), isNotEmpty);
+      final result3 = await FileDownloader().rescheduleKilledTasks();
+      expect(result3.$1, isEmpty);
+      expect(result3.$2, isEmpty);
+    },
+  );
 
-  testWidgets('cleanUp', timeout: const Timeout(Duration(minutes: 2)),
-      (widgetTester) async {
+  testWidgets('cleanUp', timeout: const Timeout(Duration(minutes: 2)), (
+    widgetTester,
+  ) async {
     // defaults
     database.cleanUp();
     // we need to access private vars to verify, but since we can't, we verify behavior
     // add many records (more than 500)
     for (int i = 0; i < 600; i++) {
       final t = DownloadTask(
-          url: 'url',
-          filename: 'f$i',
-          taskId: 'id$i',
-          creationTime: DateTime.now());
+        url: 'url',
+        filename: 'f$i',
+        taskId: 'id$i',
+        creationTime: DateTime.now(),
+      );
       final r = TaskRecord(t, TaskStatus.running, 0.5, 1000);
       await database.updateRecord(r);
     }
     expect(
-        (await database.allRecords()).length, greaterThan(598)); // likely 599
+      (await database.allRecords()).length,
+      greaterThan(598),
+    ); // likely 599
     await Future.delayed(const Duration(seconds: 1));
     // force cleanup
     database.cleanUp(); // should not trigger a cleanup
@@ -197,10 +218,11 @@ void main() {
     await database.deleteAllRecords();
     for (int i = 0; i < 10; i++) {
       final t = DownloadTask(
-          url: 'url',
-          filename: 'f$i',
-          taskId: 'id$i',
-          creationTime: now.subtract(Duration(days: i)));
+        url: 'url',
+        filename: 'f$i',
+        taskId: 'id$i',
+        creationTime: now.subtract(Duration(days: i)),
+      );
       final r = TaskRecord(t, TaskStatus.running, 0.5, 1000);
       await database.updateRecord(r);
     }
@@ -229,17 +251,19 @@ void main() {
     await database.deleteAllRecords();
   });
 
-  testWidgets('autoClean', timeout: const Timeout(Duration(minutes: 2)),
-      (widgetTester) async {
+  testWidgets('autoClean', timeout: const Timeout(Duration(minutes: 2)), (
+    widgetTester,
+  ) async {
     await database.deleteAllRecords();
     database.cleanUp(autoClean: true, maxRecordCount: 5);
     // update 100 times
     for (int i = 0; i < 110; i++) {
       final t = DownloadTask(
-          url: 'url',
-          filename: 'f$i',
-          taskId: 'id$i',
-          creationTime: DateTime.now());
+        url: 'url',
+        filename: 'f$i',
+        taskId: 'id$i',
+        creationTime: DateTime.now(),
+      );
       final r = TaskRecord(t, TaskStatus.running, 0.5, 1000);
       await database.updateRecord(r);
     }

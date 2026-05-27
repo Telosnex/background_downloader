@@ -35,16 +35,18 @@ Future<void> doDownloadTask(
   var filePath = await downloadTask.filePath();
   // tempFilePath is taken from [resumeDataString] if this is a resuming task.
   // Otherwise, it is a generated full path to the temp directory
-  final tempFilePath = isResume && resumeData != null
-      ? resumeData.tempFilepath
-      : p.join(
-          (await getTemporaryDirectory()).path,
-          'com.bbflight.background_downloader${Random().nextInt(1 << 32).toString()}',
-        );
+  final tempFilePath =
+      isResume && resumeData != null
+          ? resumeData.tempFilepath
+          : p.join(
+            (await getTemporaryDirectory()).path,
+            'com.bbflight.background_downloader${Random().nextInt(1 << 32).toString()}',
+          );
   final requiredStartByte =
       resumeData?.requiredStartByte ?? 0; // start for resume
   final eTag = resumeData?.eTag;
-  isResume = isResume &&
+  isResume =
+      isResume &&
       await determineIfResumeIsPossible(tempFilePath, requiredStartByte);
   final client = DesktopDownloader.httpClient;
   var request = http.Request(
@@ -196,17 +198,12 @@ Future<TaskStatus> processOkDownloadResponse(
         // Fallback to the target download directory as a hidden file
         final targetDir = p.dirname(filePath);
         Directory(targetDir).createSync(recursive: true);
-        actualTempFilePath = p.join(
-          targetDir,
-          '.${p.basename(tempFilePath)}',
-        );
+        actualTempFilePath = p.join(targetDir, '.${p.basename(tempFilePath)}');
         log.info(
           'Standard temporary directory not writeable ($e). '
           'Falling back to target directory temp file: $actualTempFilePath',
         );
-        outStream = File(
-          actualTempFilePath,
-        ).openWrite(mode: FileMode.write);
+        outStream = File(actualTempFilePath).openWrite(mode: FileMode.write);
       } else {
         rethrow;
       }
@@ -277,7 +274,9 @@ Future<TaskStatus> processOkDownloadResponse(
       }
     } catch (e) {
       logError(
-          downloadTask, 'Could not delete temp file $actualTempFilePath: $e');
+        downloadTask,
+        'Could not delete temp file $actualTempFilePath: $e',
+      );
     }
   }
   return resultStatus;

@@ -35,14 +35,21 @@ const urlWithLongContentLengthFileSize = 59673498;
 const defaultFilename = '5MB-test.ZIP';
 
 var task = ParallelDownloadTask(
-    url: urlWithContentLength, filename: defaultFilename, chunks: 2);
-var failingTask =
-    ParallelDownloadTask(url: failingUrl, filename: defaultFilename, chunks: 2);
+  url: urlWithContentLength,
+  filename: defaultFilename,
+  chunks: 2,
+);
+var failingTask = ParallelDownloadTask(
+  url: failingUrl,
+  filename: defaultFilename,
+  chunks: 2,
+);
 var retryTask = ParallelDownloadTask(
-    url: urlWithContentLength,
-    filename: defaultFilename,
-    chunks: 2,
-    retries: 3);
+  url: urlWithContentLength,
+  filename: defaultFilename,
+  chunks: 2,
+  retries: 3,
+);
 
 void statusCallback(TaskStatusUpdate update) {
   final task = update.task;
@@ -91,18 +98,23 @@ void main() {
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((LogRecord rec) {
       debugPrint(
-          '${rec.loggerName}>${rec.level.name}: ${rec.time}: ${rec.message}');
+        '${rec.loggerName}>${rec.level.name}: ${rec.time}: ${rec.message}',
+      );
     });
     await FileDownloader().reset();
     await FileDownloader().reset(group: 'someGroup');
     // recreate the tasks
     task = ParallelDownloadTask(
-        url: urlWithContentLength, filename: defaultFilename, chunks: 2);
+      url: urlWithContentLength,
+      filename: defaultFilename,
+      chunks: 2,
+    );
     retryTask = ParallelDownloadTask(
-        url: urlWithContentLength,
-        filename: defaultFilename,
-        chunks: 2,
-        retries: 3);
+      url: urlWithContentLength,
+      filename: defaultFilename,
+      chunks: 2,
+      retries: 3,
+    );
 
     // reset counters
     statusCallbackCounter = 0;
@@ -118,8 +130,10 @@ void main() {
     lastValidTimeRemaining = const Duration(seconds: -1);
     lastException = null;
     FileDownloader().destroy();
-    final path =
-        join((await getApplicationDocumentsDirectory()).path, task.filename);
+    final path = join(
+      (await getApplicationDocumentsDirectory()).path,
+      task.filename,
+    );
     try {
       File(path).deleteSync();
     } on FileSystemException {}
@@ -130,95 +144,120 @@ void main() {
     await FileDownloader().reset(group: FileDownloader.chunkGroup);
     FileDownloader().destroy();
     if (Platform.isAndroid || Platform.isIOS) {
-      await FileDownloader()
-          .downloaderForTesting
+      await FileDownloader().downloaderForTesting
           .setForceFailPostOnBackgroundChannel(false);
     }
     await Future.delayed(const Duration(milliseconds: 250));
   });
 
   group('Basic', () {
-    test('simple enqueue, 2 chunks, 1 url',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
-      expect(
-          await FileDownloader()
-              .enqueue(task.copyWith(url: urlWithContentLength)),
-          isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.complete));
-      expect(statusCallbackCounter, equals(3));
-      final file = File(await task.filePath());
-      expect(file.existsSync(), isTrue);
-      expect(await fileEqualsTestFile(file), isTrue);
-    });
+    test(
+      'simple enqueue, 2 chunks, 1 url',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
+        expect(
+          await FileDownloader().enqueue(
+            task.copyWith(url: urlWithContentLength),
+          ),
+          isTrue,
+        );
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.complete));
+        expect(statusCallbackCounter, equals(3));
+        final file = File(await task.filePath());
+        expect(file.existsSync(), isTrue);
+        expect(await fileEqualsTestFile(file), isTrue);
+      },
+    );
 
-    test('simple enqueue, 2 chunks, 2 url',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      task = ParallelDownloadTask(
+    test(
+      'simple enqueue, 2 chunks, 2 url',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        task = ParallelDownloadTask(
           url: [urlWithContentLength, urlWithContentLength],
           filename: defaultFilename,
-          chunks: 2);
-      FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.complete));
-      expect(statusCallbackCounter, equals(3));
-      final file = File(await task.filePath());
-      expect(file.existsSync(), isTrue);
-      expect(await fileEqualsTestFile(file), isTrue);
-    });
+          chunks: 2,
+        );
+        FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.complete));
+        expect(statusCallbackCounter, equals(3));
+        final file = File(await task.filePath());
+        expect(file.existsSync(), isTrue);
+        expect(await fileEqualsTestFile(file), isTrue);
+      },
+    );
 
-    test('simple enqueue with progress, 2 chunks, 1 url',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      var lastProgress = -1.0;
-      var numProgressUpdates = 0;
-      FileDownloader().registerCallbacks(
+    test(
+      'simple enqueue with progress, 2 chunks, 1 url',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        var lastProgress = -1.0;
+        var numProgressUpdates = 0;
+        FileDownloader().registerCallbacks(
           taskStatusCallback: statusCallback,
           taskProgressCallback: (update) {
             expect(update.progress, greaterThan(lastProgress));
             print(
-                '${DateTime.now()}: Progress #${numProgressUpdates++} = ${update.progress}, ${update.networkSpeedAsString}, ${update.timeRemainingAsString}');
+              '${DateTime.now()}: Progress #${numProgressUpdates++} = ${update.progress}, ${update.networkSpeedAsString}, ${update.timeRemainingAsString}',
+            );
             lastProgress = update.progress;
-          });
-      expect(
-          await FileDownloader().enqueue(task.copyWith(
+          },
+        );
+        expect(
+          await FileDownloader().enqueue(
+            task.copyWith(
               url: urlWithLongContentLength,
-              updates: Updates.statusAndProgress)),
-          isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.complete));
-      final file = File(await task.filePath());
-      expect(file.existsSync(), isTrue);
-      expect(await file.length(), equals(urlWithLongContentLengthFileSize));
-      expect(numProgressUpdates, greaterThan(1));
-    });
+              updates: Updates.statusAndProgress,
+            ),
+          ),
+          isTrue,
+        );
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.complete));
+        final file = File(await task.filePath());
+        expect(file.existsSync(), isTrue);
+        expect(await file.length(), equals(urlWithLongContentLengthFileSize));
+        expect(numProgressUpdates, greaterThan(1));
+      },
+    );
 
-    test('Convenience download', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      final result = await FileDownloader()
-          .download(task.copyWith(url: urlWithContentLength));
-      expect(result.status, equals(TaskStatus.complete));
-      expect(result.responseStatusCode, equals(200));
-      expect(result.responseHeaders, isNotNull);
-      expect(result.responseHeaders, isNotEmpty);
-    });
+    test(
+      'Convenience download',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        final result = await FileDownloader().download(
+          task.copyWith(url: urlWithContentLength),
+        );
+        expect(result.status, equals(TaskStatus.complete));
+        expect(result.responseStatusCode, equals(200));
+        expect(result.responseHeaders, isNotNull);
+        expect(result.responseHeaders, isNotEmpty);
+      },
+    );
 
-    test('403 enqueue, no retries',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
-      if (!Platform.isIOS) {
-        expect(await FileDownloader().enqueue(failingTask), isTrue);
-      } else {
-        expect(await FileDownloader().enqueue(failingTask), isFalse);
-        return;
-      }
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.failed));
-    });
+    test(
+      '403 enqueue, no retries',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
+        if (!Platform.isIOS) {
+          expect(await FileDownloader().enqueue(failingTask), isTrue);
+        } else {
+          expect(await FileDownloader().enqueue(failingTask), isFalse);
+          return;
+        }
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.failed));
+      },
+    );
 
-    testWidgets('no content length',
-        timeout: const Timeout(Duration(minutes: 2)), (widgetTester) async {
+    testWidgets('no content length', timeout: const Timeout(Duration(minutes: 2)), (
+      widgetTester,
+    ) async {
       task = task.copyWith(url: 'http://$localServerHostPort/');
       if (Platform.isIOS) {
         // different from a normal download task, enqueue fails immediately
@@ -229,23 +268,27 @@ void main() {
       expect(result.status, equals(TaskStatus.failed));
       if (Platform.isIOS) {
         expect(
-            result.exception?.description.startsWith('Could not enqueue task'),
-            isTrue);
+          result.exception?.description.startsWith('Could not enqueue task'),
+          isTrue,
+        );
       }
       if (Platform.isAndroid ||
           Platform.isLinux ||
           Platform.isMacOS ||
           Platform.isWindows) {
         expect(
-            result.exception?.description.endsWith(
-                'Server does not provide content length - cannot chunk download. If you know the length, set Range or Known-Content-Length header'),
-            isTrue);
+          result.exception?.description.endsWith(
+            'Server does not provide content length - cannot chunk download. If you know the length, set Range or Known-Content-Length header',
+          ),
+          isTrue,
+        );
       }
       expect(result.responseBody, isNull);
     });
 
-    testWidgets('not found', timeout: const Timeout(Duration(minutes: 2)),
-        (widgetTester) async {
+    testWidgets('not found', timeout: const Timeout(Duration(minutes: 2)), (
+      widgetTester,
+    ) async {
       task = task.copyWith(url: 'http://$localServerHostPort/something');
       if (Platform.isIOS) {
         // different from a normal download task, enqueue fails immediately
@@ -256,8 +299,9 @@ void main() {
         // as a result, the task fails instead of .notFound, and no responseBody is available
         expect(result.status, equals(TaskStatus.failed));
         expect(
-            result.exception?.description.startsWith('Could not enqueue task'),
-            isTrue);
+          result.exception?.description.startsWith('Could not enqueue task'),
+          isTrue,
+        );
         expect(result.responseBody, isNull);
       }
       if (Platform.isAndroid ||
@@ -270,32 +314,42 @@ void main() {
       }
     });
 
-    test('cancellation', timeout: const Timeout(Duration(minutes: 2)),
-        () async {
-      FileDownloader().registerCallbacks(
+    test(
+      'cancellation',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        FileDownloader().registerCallbacks(
           taskStatusCallback: statusCallback,
-          taskProgressCallback: progressCallback);
-      expect(
-          await FileDownloader().enqueue(task.copyWith(
+          taskProgressCallback: progressCallback,
+        );
+        expect(
+          await FileDownloader().enqueue(
+            task.copyWith(
               url: urlWithLongContentLength,
-              updates: Updates.statusAndProgress)),
-          isTrue);
-      await someProgressCompleter.future;
-      expect(lastStatus, equals(TaskStatus.running));
-      expect(await FileDownloader().cancelTaskWithId(task.taskId), isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.canceled));
-      await Future.delayed(const Duration(seconds: 3));
-    });
+              updates: Updates.statusAndProgress,
+            ),
+          ),
+          isTrue,
+        );
+        await someProgressCompleter.future;
+        expect(lastStatus, equals(TaskStatus.running));
+        expect(await FileDownloader().cancelTaskWithId(task.taskId), isTrue);
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.canceled));
+        await Future.delayed(const Duration(seconds: 3));
+      },
+    );
 
     test('pause', timeout: const Timeout(Duration(minutes: 2)), () async {
       FileDownloader().registerCallbacks(
-          taskStatusCallback: statusCallback,
-          taskProgressCallback: progressCallback);
+        taskStatusCallback: statusCallback,
+        taskProgressCallback: progressCallback,
+      );
       task = task.copyWith(
-          url: urlWithLongContentLength,
-          updates: Updates.statusAndProgress,
-          allowPause: true);
+        url: urlWithLongContentLength,
+        updates: Updates.statusAndProgress,
+        allowPause: true,
+      );
       expect(await FileDownloader().enqueue(task), isTrue);
       await someProgressCompleter.future;
       expect(lastStatus, equals(TaskStatus.running));
@@ -320,74 +374,87 @@ void main() {
   group('Modifications', () {
     // Tests in this group require modification of the source code
     // and may fail without that
-    test('[*] retries - must modify transferBytes to fail',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // modify the TransferBytes method to fail, otherwise retries are not
-      // triggered
-      FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
-      expect(await FileDownloader().enqueue(retryTask), isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.failed));
-    });
+    test(
+      '[*] retries - must modify transferBytes to fail',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // modify the TransferBytes method to fail, otherwise retries are not
+        // triggered
+        FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
+        expect(await FileDownloader().enqueue(retryTask), isTrue);
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.failed));
+      },
+    );
 
-    test('[*] Range or Known-Content-Length in task header',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // modify the getContentLength function to not return a
-      // content length, so that it relies on Range or
-      // Known-Content-Length header to determine content length
-      FileDownloader().registerCallbacks(
+    test(
+      '[*] Range or Known-Content-Length in task header',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // modify the getContentLength function to not return a
+        // content length, so that it relies on Range or
+        // Known-Content-Length header to determine content length
+        FileDownloader().registerCallbacks(
           taskStatusCallback: statusCallback,
-          taskProgressCallback: progressCallback);
-      // try with Range header
-      task = task.copyWith(
+          taskProgressCallback: progressCallback,
+        );
+        // try with Range header
+        task = task.copyWith(
           taskId: "1",
           url: urlWithContentLength,
           headers: {'Range': 'bytes=0-${urlWithContentLengthFileSize - 1}'},
-          updates: Updates.statusAndProgress);
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastValidExpectedFileSize, equals(urlWithContentLengthFileSize));
-      // try with Known-Content-Length header
-      statusCallbackCompleter = Completer();
-      lastValidExpectedFileSize = -1;
-      task = task.copyWith(
-          taskId: "2",
-          headers: {'Known-Content-Length': '$urlWithContentLengthFileSize'});
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastValidExpectedFileSize, equals(urlWithContentLengthFileSize));
-      // try without any header, and if the source code mod has been made, this
-      // should fail the task
-      statusCallbackCompleter = Completer();
-      lastValidExpectedFileSize = -1;
-      task = task.copyWith(taskId: "3", headers: {});
-      if (!Platform.isIOS) {
+          updates: Updates.statusAndProgress,
+        );
         expect(await FileDownloader().enqueue(task), isTrue);
         await statusCallbackCompleter.future;
-        expect(lastStatus, equals(TaskStatus.failed));
-      } else {
-        // on iOS the task fails at enqueue
-        expect(await FileDownloader().enqueue(task), isFalse);
-      }
-    });
+        expect(lastValidExpectedFileSize, equals(urlWithContentLengthFileSize));
+        // try with Known-Content-Length header
+        statusCallbackCompleter = Completer();
+        lastValidExpectedFileSize = -1;
+        task = task.copyWith(
+          taskId: "2",
+          headers: {'Known-Content-Length': '$urlWithContentLengthFileSize'},
+        );
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await statusCallbackCompleter.future;
+        expect(lastValidExpectedFileSize, equals(urlWithContentLengthFileSize));
+        // try without any header, and if the source code mod has been made, this
+        // should fail the task
+        statusCallbackCompleter = Completer();
+        lastValidExpectedFileSize = -1;
+        task = task.copyWith(taskId: "3", headers: {});
+        if (!Platform.isIOS) {
+          expect(await FileDownloader().enqueue(task), isTrue);
+          await statusCallbackCompleter.future;
+          expect(lastStatus, equals(TaskStatus.failed));
+        } else {
+          // on iOS the task fails at enqueue
+          expect(await FileDownloader().enqueue(task), isFalse);
+        }
+      },
+    );
 
-    test('[*] override content length',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      // Haven't found a url that does not provide content-length, so
-      // can only be tested by modifying the source code to ignore the
-      // Content-Length response header and use this one instead
-      FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
-      task = task.copyWith(
+    test(
+      '[*] override content length',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        // Haven't found a url that does not provide content-length, so
+        // can only be tested by modifying the source code to ignore the
+        // Content-Length response header and use this one instead
+        FileDownloader().registerCallbacks(taskStatusCallback: statusCallback);
+        task = task.copyWith(
           url: urlWithContentLength,
-          headers: {'Known-Content-Length': '$urlWithContentLengthFileSize'});
-      expect(await FileDownloader().enqueue(task), isTrue);
-      await statusCallbackCompleter.future;
-      expect(lastStatus, equals(TaskStatus.complete));
-      expect(statusCallbackCounter, equals(3));
-      final file = File(await task.filePath());
-      expect(file.existsSync(), isTrue);
-      expect(await fileEqualsTestFile(file), isTrue);
-    });
+          headers: {'Known-Content-Length': '$urlWithContentLengthFileSize'},
+        );
+        expect(await FileDownloader().enqueue(task), isTrue);
+        await statusCallbackCompleter.future;
+        expect(lastStatus, equals(TaskStatus.complete));
+        expect(statusCallbackCounter, equals(3));
+        final file = File(await task.filePath());
+        expect(file.existsSync(), isTrue);
+        expect(await fileEqualsTestFile(file), isTrue);
+      },
+    );
   }, skip: true);
 }
 

@@ -12,91 +12,103 @@ void main() {
     Localstore.instance.clearCache();
   });
 
-  test('Localstore sequential read/write/delete',
-      timeout: const Timeout(Duration(minutes: 2)), () async {
-    final stopwatch = Stopwatch()..start();
-    final db = Localstore.instance;
-    final collection = db.collection('test_collection_seq');
+  test(
+    'Localstore sequential read/write/delete',
+    timeout: const Timeout(Duration(minutes: 2)),
+    () async {
+      final stopwatch = Stopwatch()..start();
+      final db = Localstore.instance;
+      final collection = db.collection('test_collection_seq');
 
-    for (var i = 0; i < 50; i++) {
-      final id = 'seq_$i';
-      final data = {
-        'id': id,
-        'value': 'test_$i',
-        'ts': DateTime.now().toIso8601String()
-      };
+      for (var i = 0; i < 50; i++) {
+        final id = 'seq_$i';
+        final data = {
+          'id': id,
+          'value': 'test_$i',
+          'ts': DateTime.now().toIso8601String(),
+        };
 
-      // Write
-      await collection.doc(id).set(data);
+        // Write
+        await collection.doc(id).set(data);
 
-      // Read
-      final readData = await collection.doc(id).get();
-      expect(readData, equals(data));
+        // Read
+        final readData = await collection.doc(id).get();
+        expect(readData, equals(data));
 
-      // Delete
-      await collection.doc(id).delete();
+        // Delete
+        await collection.doc(id).delete();
 
-      // Verify deletion
-      final deletedData = await collection.doc(id).get();
-      expect(deletedData, isNull);
-    }
-    stopwatch.stop();
-    debugPrint(
-        'Test "Localstore sequential read/write/delete" took ${stopwatch.elapsedMilliseconds}ms');
-  });
+        // Verify deletion
+        final deletedData = await collection.doc(id).get();
+        expect(deletedData, isNull);
+      }
+      stopwatch.stop();
+      debugPrint(
+        'Test "Localstore sequential read/write/delete" took ${stopwatch.elapsedMilliseconds}ms',
+      );
+    },
+  );
 
-  test('Localstore simultaneous stress test',
-      timeout: const Timeout(Duration(minutes: 2)), () async {
-    final stopwatch = Stopwatch()..start();
-    final db = Localstore.instance;
-    final collection = db.collection('test_collection_sim');
-    final rng = Random();
+  test(
+    'Localstore simultaneous stress test',
+    timeout: const Timeout(Duration(minutes: 2)),
+    () async {
+      final stopwatch = Stopwatch()..start();
+      final db = Localstore.instance;
+      final collection = db.collection('test_collection_sim');
+      final rng = Random();
 
-    final futures = List<Future<void>>.generate(50, (index) async {
-      final id = 'sim_$index';
-      final data = {
-        'id': id,
-        'value': rng.nextInt(10000),
-        'ts': DateTime.now().millisecondsSinceEpoch
-      };
+      final futures = List<Future<void>>.generate(50, (index) async {
+        final id = 'sim_$index';
+        final data = {
+          'id': id,
+          'value': rng.nextInt(10000),
+          'ts': DateTime.now().millisecondsSinceEpoch,
+        };
 
-      // Write
-      await collection.doc(id).set(data);
+        // Write
+        await collection.doc(id).set(data);
 
-      // Read and verify
-      final readData = await collection.doc(id).get();
-      expect(readData, equals(data));
+        // Read and verify
+        final readData = await collection.doc(id).get();
+        expect(readData, equals(data));
 
-      // Delete
-      await collection.doc(id).delete();
+        // Delete
+        await collection.doc(id).delete();
 
-      // Verify deletion
-      final deletedData = await collection.doc(id).get();
-      expect(deletedData, isNull);
-    });
+        // Verify deletion
+        final deletedData = await collection.doc(id).get();
+        expect(deletedData, isNull);
+      });
 
-    await Future.wait(futures);
-    stopwatch.stop();
-    debugPrint(
-        'Test "Localstore simultaneous stress test" took ${stopwatch.elapsedMilliseconds}ms');
-  });
+      await Future.wait(futures);
+      stopwatch.stop();
+      debugPrint(
+        'Test "Localstore simultaneous stress test" took ${stopwatch.elapsedMilliseconds}ms',
+      );
+    },
+  );
 
-  test('Localstore aggressive overwrite test',
-      timeout: const Timeout(Duration(minutes: 2)), () async {
-    final stopwatch = Stopwatch()..start();
-    final db = Localstore.instance;
-    final collection = db.collection('test_collection_overwrite');
-    const id = 'overwrite_id';
+  test(
+    'Localstore aggressive overwrite test',
+    timeout: const Timeout(Duration(minutes: 2)),
+    () async {
+      final stopwatch = Stopwatch()..start();
+      final db = Localstore.instance;
+      final collection = db.collection('test_collection_overwrite');
+      const id = 'overwrite_id';
 
-    for (var i = 0; i < 100; i++) {
-      final data = {'value': i};
-      await collection.doc(id).set(data);
+      for (var i = 0; i < 100; i++) {
+        final data = {'value': i};
+        await collection.doc(id).set(data);
 
-      final readData = await collection.doc(id).get();
-      expect(readData, equals(data), reason: 'Failed at iteration $i');
-    }
-    stopwatch.stop();
-    debugPrint(
-        'Test "Localstore aggressive overwrite test" took ${stopwatch.elapsedMilliseconds}ms');
-  });
+        final readData = await collection.doc(id).get();
+        expect(readData, equals(data), reason: 'Failed at iteration $i');
+      }
+      stopwatch.stop();
+      debugPrint(
+        'Test "Localstore aggressive overwrite test" took ${stopwatch.elapsedMilliseconds}ms',
+      );
+    },
+  );
 }

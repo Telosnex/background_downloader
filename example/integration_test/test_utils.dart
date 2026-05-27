@@ -56,11 +56,16 @@ const uploadFilename = 'a_file.txt';
 const uploadFilename2 = 'second_file.txt';
 const largeFilename = '5MB-test.ZIP';
 
-var task =
-    DownloadTask(url: urlWithoutContentLength, filename: defaultFilename);
+var task = DownloadTask(
+  url: urlWithoutContentLength,
+  filename: defaultFilename,
+);
 
-var retryTask =
-    DownloadTask(url: urlWithFailure, filename: defaultFilename, retries: 3);
+var retryTask = DownloadTask(
+  url: urlWithFailure,
+  filename: defaultFilename,
+  retries: 3,
+);
 
 var uploadTask = UploadTask(url: uploadTestUrl, filename: uploadFilename);
 var uploadTaskBinary = uploadTask.copyWith(post: 'binary');
@@ -126,24 +131,30 @@ Future<void> defaultSetup() async {
   });
   await FileDownloader().reset();
   await FileDownloader().reset(group: 'someGroup');
-// recreate the tasks
+  // recreate the tasks
   task = DownloadTask(url: urlWithoutContentLength, filename: defaultFilename);
-  retryTask =
-      DownloadTask(url: urlWithFailure, filename: defaultFilename, retries: 3);
+  retryTask = DownloadTask(
+    url: urlWithFailure,
+    filename: defaultFilename,
+    retries: 3,
+  );
   uploadTask = UploadTask(url: uploadTestUrl, filename: uploadFilename);
-  uploadTaskBinary =
-      uploadTask.copyWith(url: uploadBinaryTestUrl, post: 'binary');
+  uploadTaskBinary = uploadTask.copyWith(
+    url: uploadBinaryTestUrl,
+    post: 'binary',
+  );
 
-// copy the test files to upload from assets to documents directory
+  // copy the test files to upload from assets to documents directory
   Directory directory = await getApplicationDocumentsDirectory();
   for (final filename in [uploadFilename, uploadFilename2, largeFilename]) {
     var uploadFilePath = join(directory.path, filename);
     ByteData data = await rootBundle.load("assets/$filename");
     final buffer = data.buffer;
     File(uploadFilePath).writeAsBytesSync(
-        buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+      buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+    );
   }
-// reset counters
+  // reset counters
   statusCallbackCounter = 0;
   progressCallbackCounter = 0;
   statusCallbackCompleter = Completer<void>();
@@ -159,15 +170,20 @@ Future<void> defaultSetup() async {
   lastException = null;
   FileDownloader().destroy();
   FileDownloader().configureNotification(
-      running: const TaskNotification('Running', 'Task is running'),
-      complete: const TaskNotification('Complete', 'Task is complete'),
-      progressBar: true);
-  await FileDownloader().configure(globalConfig: [
-    (Config.holdingQueue, false),
-    (Config.runInForeground, false),
-  ]);
-  final path =
-      join((await getApplicationDocumentsDirectory()).path, task.filename);
+    running: const TaskNotification('Running', 'Task is running'),
+    complete: const TaskNotification('Complete', 'Task is complete'),
+    progressBar: true,
+  );
+  await FileDownloader().configure(
+    globalConfig: [
+      (Config.holdingQueue, false),
+      (Config.runInForeground, false),
+    ],
+  );
+  final path = join(
+    (await getApplicationDocumentsDirectory()).path,
+    task.filename,
+  );
   try {
     File(path).deleteSync();
   } on FileSystemException {}
@@ -178,8 +194,7 @@ Future<void> defaultTearDown() async {
   await FileDownloader().reset(group: 'someGroup');
   FileDownloader().destroy();
   if (Platform.isAndroid || Platform.isIOS) {
-    await FileDownloader()
-        .downloaderForTesting
+    await FileDownloader().downloaderForTesting
         .setForceFailPostOnBackgroundChannel(false);
   }
   await Future.delayed(const Duration(milliseconds: 250));

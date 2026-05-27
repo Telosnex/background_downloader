@@ -42,305 +42,386 @@ void main() {
       }
     });
 
-    test('GET request with FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'get-request-test';
-      final request = Request(
-        url: 'http://$localServerHostPort/get?taskId=$taskId',
-        httpRequestMethod: 'GET',
-      );
-      final result = await downloader.request(request);
-      expect(result.statusCode, 200);
-      expect(result.headers.containsKey('content-type'), true);
-      expect(
-          result.headers['content-type']!.contains('application/json'), true);
+    test(
+      'GET request with FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'get-request-test';
+        final request = Request(
+          url: 'http://$localServerHostPort/get?taskId=$taskId',
+          httpRequestMethod: 'GET',
+        );
+        final result = await downloader.request(request);
+        expect(result.statusCode, 200);
+        expect(result.headers.containsKey('content-type'), true);
+        expect(
+          result.headers['content-type']!.contains('application/json'),
+          true,
+        );
 
-      // Parse the JSON response and check for our taskId.
-      final Map<String, dynamic> data = jsonDecode(result.body);
-      expect(getTaskId(data), taskId);
-    });
+        // Parse the JSON response and check for our taskId.
+        final Map<String, dynamic> data = jsonDecode(result.body);
+        expect(getTaskId(data), taskId);
+      },
+    );
 
-    test('POST request with FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'post-request-test';
-      final request = Request(
+    test(
+      'POST request with FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'post-request-test';
+        final request = Request(
           url: 'http://$localServerHostPort/post?taskId=$taskId',
           httpRequestMethod: 'POST',
-          post: '{"testKey": "testValue"}');
-      final result = await downloader.request(request);
-      expect(result.statusCode, 200);
-      expect(result.headers.containsKey('content-type'), true);
-      expect(
-          result.headers['content-type']!.contains('application/json'), true);
+          post: '{"testKey": "testValue"}',
+        );
+        final result = await downloader.request(request);
+        expect(result.statusCode, 200);
+        expect(result.headers.containsKey('content-type'), true);
+        expect(
+          result.headers['content-type']!.contains('application/json'),
+          true,
+        );
 
-      final Map<String, dynamic> data = jsonDecode(result.body);
-      expect(getTaskId(data), taskId);
-      expect(data['json']['testKey'], 'testValue'); // Verify post data
-    });
+        final Map<String, dynamic> data = jsonDecode(result.body);
+        expect(getTaskId(data), taskId);
+        expect(data['json']['testKey'], 'testValue'); // Verify post data
+      },
+    );
 
-    test('PUT request with FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'put-request-test';
-      final request = Request(
+    test(
+      'PUT request with FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'put-request-test';
+        final request = Request(
           url: 'http://$localServerHostPort/put?taskId=$taskId',
           httpRequestMethod: 'PUT',
-          post: '{"testKey": "putValue"}');
-      final result = await downloader.request(request);
-      expect(result.statusCode, 200);
-      expect(
-          result.headers['content-type']!.contains('application/json'), true);
+          post: '{"testKey": "putValue"}',
+        );
+        final result = await downloader.request(request);
+        expect(result.statusCode, 200);
+        expect(
+          result.headers['content-type']!.contains('application/json'),
+          true,
+        );
 
-      final Map<String, dynamic> data = jsonDecode(result.body);
-      expect(getTaskId(data), taskId);
-      expect(data['json']['testKey'], 'putValue'); // Verify post data.
-    });
+        final Map<String, dynamic> data = jsonDecode(result.body);
+        expect(getTaskId(data), taskId);
+        expect(data['json']['testKey'], 'putValue'); // Verify post data.
+      },
+    );
 
-    test('PATCH request with FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'patch-request-test';
-      final request = Request(
+    test(
+      'PATCH request with FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'patch-request-test';
+        final request = Request(
           url: 'http://$localServerHostPort/patch?taskId=$taskId',
           httpRequestMethod: 'PATCH',
-          post: '{"testKey": "patchValue"}');
-      final result = await downloader.request(request);
-      expect(result.statusCode, 200);
-      expect(
-          result.headers['content-type']!.contains('application/json'), true);
+          post: '{"testKey": "patchValue"}',
+        );
+        final result = await downloader.request(request);
+        expect(result.statusCode, 200);
+        expect(
+          result.headers['content-type']!.contains('application/json'),
+          true,
+        );
 
-      final Map<String, dynamic> data = jsonDecode(result.body);
-      expect(getTaskId(data), taskId);
-      expect(data['json']['testKey'], 'patchValue'); // Verify post data.
-    });
+        final Map<String, dynamic> data = jsonDecode(result.body);
+        expect(getTaskId(data), taskId);
+        expect(data['json']['testKey'], 'patchValue'); // Verify post data.
+      },
+    );
 
-    test('DELETE request with FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'delete-request-test';
-      final task = Request(
+    test(
+      'DELETE request with FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'delete-request-test';
+        final task = Request(
           url: 'http://$localServerHostPort/delete?taskId=$taskId',
-          httpRequestMethod: 'DELETE');
-      final result = await downloader.request(task);
-      expect(result.statusCode, 200);
-      expect(
-          result.headers['content-type']!.contains('application/json'), true);
+          httpRequestMethod: 'DELETE',
+        );
+        final result = await downloader.request(task);
+        expect(result.statusCode, 200);
+        expect(
+          result.headers['content-type']!.contains('application/json'),
+          true,
+        );
 
-      final Map<String, dynamic> data = jsonDecode(result.body);
-      expect(getTaskId(data), taskId);
-    });
+        final Map<String, dynamic> data = jsonDecode(result.body);
+        expect(getTaskId(data), taskId);
+      },
+    );
 
-    test('HEAD request with FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'head-request-test';
-      final request = Request(
+    test(
+      'HEAD request with FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'head-request-test';
+        final request = Request(
           url: 'http://$localServerHostPort/get?taskId=$taskId',
           // Use GET endpoint for HEAD
-          httpRequestMethod: 'HEAD');
+          httpRequestMethod: 'HEAD',
+        );
 
-      final result = await downloader.request(request);
-      expect(result.statusCode, 200);
-      expect(result.headers.containsKey('content-type'), true);
-      expect(
-          result.body.isEmpty, isTrue); // Important: HEAD should have no body
-    });
+        final result = await downloader.request(request);
+        expect(result.statusCode, 200);
+        expect(result.headers.containsKey('content-type'), true);
+        expect(
+          result.body.isEmpty,
+          isTrue,
+        ); // Important: HEAD should have no body
+      },
+    );
 
-    test('POST request with custom headers via FileDownloader().request',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'post-request-headers-test';
-      final customHeaders = {
-        'X-Custom-Header': 'CustomValue',
-        'Authorization': 'Bearer mytoken',
-      };
-      final request = Request(
+    test(
+      'POST request with custom headers via FileDownloader().request',
+      timeout: const Timeout(Duration(minutes: 2)),
+      () async {
+        const taskId = 'post-request-headers-test';
+        final customHeaders = {
+          'X-Custom-Header': 'CustomValue',
+          'Authorization': 'Bearer mytoken',
+        };
+        final request = Request(
           url: 'http://$localServerHostPort/post?taskId=$taskId',
           httpRequestMethod: 'POST',
           headers: customHeaders,
-          post: '{"testKey": "testValue"}');
-      final result = await downloader.request(request);
-      expect(result.statusCode, 200);
+          post: '{"testKey": "testValue"}',
+        );
+        final result = await downloader.request(request);
+        expect(result.statusCode, 200);
 
-      final Map<String, dynamic> data = jsonDecode(result.body);
-      expect(getTaskId(data), taskId);
-      expect(data['headers']['X-Custom-Header'],
-          'CustomValue'); // Verify custom header
-      expect(data['headers']['Authorization'],
-          'Bearer mytoken'); // Verify auth header
-    });
+        final Map<String, dynamic> data = jsonDecode(result.body);
+        expect(getTaskId(data), taskId);
+        expect(
+          data['headers']['X-Custom-Header'],
+          'CustomValue',
+        ); // Verify custom header
+        expect(
+          data['headers']['Authorization'],
+          'Bearer mytoken',
+        ); // Verify auth header
+      },
+    );
   });
 
   group(
-      'Background Downloader Integration Tests (httpbin.org) - Download Method',
-      () {
-    late Directory tempDir;
-    late FileDownloader downloader;
+    'Background Downloader Integration Tests (httpbin.org) - Download Method',
+    () {
+      late Directory tempDir;
+      late FileDownloader downloader;
 
-    setUp(() async {
-      tempDir = await getTempDir();
-      if (!tempDir.existsSync()) {
-        tempDir.createSync(recursive: true);
-      }
-      downloader = FileDownloader();
-    });
+      setUp(() async {
+        tempDir = await getTempDir();
+        if (!tempDir.existsSync()) {
+          tempDir.createSync(recursive: true);
+        }
+        downloader = FileDownloader();
+      });
 
-    tearDown(() async {
-      if (tempDir.existsSync()) {
-        tempDir.deleteSync(recursive: true);
-      }
-    });
+      tearDown(() async {
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      });
 
-    test('GET request with FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'get-download-test';
-      final task = DownloadTask(
-          url: 'http://$localServerHostPort/get?taskId=$taskId',
-          httpRequestMethod: 'GET',
-          taskId: taskId);
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
+      test(
+        'GET request with FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'get-download-test';
+          final task = DownloadTask(
+            url: 'http://$localServerHostPort/get?taskId=$taskId',
+            httpRequestMethod: 'GET',
+            taskId: taskId,
+          );
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
-      expect(file.existsSync(), isTrue);
+          final filePath = await task.filePath();
+          final file = File(filePath);
+          expect(file.existsSync(), isTrue);
 
-      final Map<String, dynamic> data = jsonDecode(await file.readAsString());
-      expect(getTaskId(data), taskId);
-      file.deleteSync();
-    });
-
-    test('POST request with FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'post-download-test';
-      final task = DownloadTask(
-        url: 'http://$localServerHostPort/post?taskId=$taskId',
-        httpRequestMethod: 'POST',
-        headers: {'Content-type': 'text/plain'},
-        taskId: taskId,
-        post: 'TestPost',
+          final Map<String, dynamic> data = jsonDecode(
+            await file.readAsString(),
+          );
+          expect(getTaskId(data), taskId);
+          file.deleteSync();
+        },
       );
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
-      expect(file.existsSync(), isTrue);
+      test(
+        'POST request with FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'post-download-test';
+          final task = DownloadTask(
+            url: 'http://$localServerHostPort/post?taskId=$taskId',
+            httpRequestMethod: 'POST',
+            headers: {'Content-type': 'text/plain'},
+            taskId: taskId,
+            post: 'TestPost',
+          );
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      final Map<String, dynamic> data = jsonDecode(await file.readAsString());
-      expect(getTaskId(data), taskId);
-      expect(data['data'], 'TestPost');
-      file.deleteSync();
-    });
+          final filePath = await task.filePath();
+          final file = File(filePath);
+          expect(file.existsSync(), isTrue);
 
-    test('PUT request with FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'put-download-test';
-      final task = DownloadTask(
-        url: 'http://$localServerHostPort/put?taskId=$taskId',
-        httpRequestMethod: 'PUT',
-        headers: {'Content-type': 'text/plain'},
-        taskId: taskId,
-        post: 'TestPost',
+          final Map<String, dynamic> data = jsonDecode(
+            await file.readAsString(),
+          );
+          expect(getTaskId(data), taskId);
+          expect(data['data'], 'TestPost');
+          file.deleteSync();
+        },
       );
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
-      expect(file.existsSync(), isTrue);
+      test(
+        'PUT request with FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'put-download-test';
+          final task = DownloadTask(
+            url: 'http://$localServerHostPort/put?taskId=$taskId',
+            httpRequestMethod: 'PUT',
+            headers: {'Content-type': 'text/plain'},
+            taskId: taskId,
+            post: 'TestPost',
+          );
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      final Map<String, dynamic> data = jsonDecode(await file.readAsString());
-      expect(getTaskId(data), taskId);
-      expect(data['data'], 'TestPost');
-      file.deleteSync();
-    });
+          final filePath = await task.filePath();
+          final file = File(filePath);
+          expect(file.existsSync(), isTrue);
 
-    test('PATCH request with FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'patch-download-test';
-      final task = DownloadTask(
-        url: 'http://$localServerHostPort/patch?taskId=$taskId',
-        httpRequestMethod: 'PATCH',
-        headers: {'Content-type': 'text/plain'},
-        taskId: taskId,
-        post: 'TestPost',
+          final Map<String, dynamic> data = jsonDecode(
+            await file.readAsString(),
+          );
+          expect(getTaskId(data), taskId);
+          expect(data['data'], 'TestPost');
+          file.deleteSync();
+        },
       );
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
-      expect(file.existsSync(), isTrue);
+      test(
+        'PATCH request with FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'patch-download-test';
+          final task = DownloadTask(
+            url: 'http://$localServerHostPort/patch?taskId=$taskId',
+            httpRequestMethod: 'PATCH',
+            headers: {'Content-type': 'text/plain'},
+            taskId: taskId,
+            post: 'TestPost',
+          );
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      final Map<String, dynamic> data = jsonDecode(await file.readAsString());
-      expect(getTaskId(data), taskId);
-      expect(data['data'], 'TestPost');
-      file.deleteSync();
-    });
+          final filePath = await task.filePath();
+          final file = File(filePath);
+          expect(file.existsSync(), isTrue);
 
-    test('DELETE request with FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'delete-download-test';
-      final task = DownloadTask(
-          url: 'http://$localServerHostPort/delete?taskId=$taskId',
-          httpRequestMethod: 'DELETE',
-          taskId: taskId);
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
+          final Map<String, dynamic> data = jsonDecode(
+            await file.readAsString(),
+          );
+          expect(getTaskId(data), taskId);
+          expect(data['data'], 'TestPost');
+          file.deleteSync();
+        },
+      );
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
-      expect(file.existsSync(), isTrue);
+      test(
+        'DELETE request with FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'delete-download-test';
+          final task = DownloadTask(
+            url: 'http://$localServerHostPort/delete?taskId=$taskId',
+            httpRequestMethod: 'DELETE',
+            taskId: taskId,
+          );
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      final Map<String, dynamic> data = jsonDecode(await file.readAsString());
-      expect(getTaskId(data), taskId);
-      file.deleteSync();
-    });
+          final filePath = await task.filePath();
+          final file = File(filePath);
+          expect(file.existsSync(), isTrue);
 
-    test('HEAD request with FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'head-download-test';
-      final task = DownloadTask(
-          url:
-              'http://$localServerHostPort/get?taskId=$taskId', //Use get for HEAD
-          httpRequestMethod: 'HEAD',
-          taskId: taskId);
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
+          final Map<String, dynamic> data = jsonDecode(
+            await file.readAsString(),
+          );
+          expect(getTaskId(data), taskId);
+          file.deleteSync();
+        },
+      );
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
+      test(
+        'HEAD request with FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'head-download-test';
+          final task = DownloadTask(
+            url:
+                'http://$localServerHostPort/get?taskId=$taskId', //Use get for HEAD
+            httpRequestMethod: 'HEAD',
+            taskId: taskId,
+          );
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      // For a HEAD request, we don't expect content, but we DO expect the file
-      // to be created of 0 length
-      expect(file.existsSync(), isTrue);
-      expect(file.lengthSync(), equals(0));
-      file.deleteSync();
-    });
+          final filePath = await task.filePath();
+          final file = File(filePath);
 
-    test('POST with custom headers using FileDownloader().download',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
-      const taskId = 'post-download-headers-test';
-      final customHeaders = {
-        'X-Custom-Header': 'CustomValue',
-        'Authorization': 'Bearer mytoken',
-      };
-      final task = DownloadTask(
-          url: 'http://$localServerHostPort/post?taskId=$taskId',
-          httpRequestMethod: 'POST',
-          headers: {'Content-type': 'text/plain', ...customHeaders},
-          post: 'TestPost',
-          taskId: taskId);
+          // For a HEAD request, we don't expect content, but we DO expect the file
+          // to be created of 0 length
+          expect(file.existsSync(), isTrue);
+          expect(file.lengthSync(), equals(0));
+          file.deleteSync();
+        },
+      );
 
-      final result = await downloader.download(task);
-      expect(result.status, TaskStatus.complete);
+      test(
+        'POST with custom headers using FileDownloader().download',
+        timeout: const Timeout(Duration(minutes: 2)),
+        () async {
+          const taskId = 'post-download-headers-test';
+          final customHeaders = {
+            'X-Custom-Header': 'CustomValue',
+            'Authorization': 'Bearer mytoken',
+          };
+          final task = DownloadTask(
+            url: 'http://$localServerHostPort/post?taskId=$taskId',
+            httpRequestMethod: 'POST',
+            headers: {'Content-type': 'text/plain', ...customHeaders},
+            post: 'TestPost',
+            taskId: taskId,
+          );
 
-      final filePath = await task.filePath();
-      final file = File(filePath);
-      expect(file.existsSync(), isTrue);
+          final result = await downloader.download(task);
+          expect(result.status, TaskStatus.complete);
 
-      final Map<String, dynamic> data = jsonDecode(await file.readAsString());
-      expect(getTaskId(data), taskId);
-      expect(data['headers']['X-Custom-Header'], 'CustomValue');
-      expect(data['headers']['Authorization'], 'Bearer mytoken');
-      expect(data['data'], 'TestPost');
-      file.deleteSync();
-    });
-  });
+          final filePath = await task.filePath();
+          final file = File(filePath);
+          expect(file.existsSync(), isTrue);
+
+          final Map<String, dynamic> data = jsonDecode(
+            await file.readAsString(),
+          );
+          expect(getTaskId(data), taskId);
+          expect(data['headers']['X-Custom-Header'], 'CustomValue');
+          expect(data['headers']['Authorization'], 'Bearer mytoken');
+          expect(data['data'], 'TestPost');
+          file.deleteSync();
+        },
+      );
+    },
+  );
 }
