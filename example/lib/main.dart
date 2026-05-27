@@ -36,7 +36,6 @@ class _MyAppState extends State<MyApp> {
   bool loadAndOpenInProgress = false;
   bool loadABunchInProgress = false;
 
-
   @override
   void initState() {
     super.initState();
@@ -388,8 +387,6 @@ class _MyAppState extends State<MyApp> {
       });
     }
   }
-
-
 
   Future<void> processPickDirectory() async {
     final uri = await FileDownloader().uri.pickDirectory();

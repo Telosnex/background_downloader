@@ -44,8 +44,7 @@ Future<void> doDownloadTask(
   final requiredStartByte =
       resumeData?.requiredStartByte ?? 0; // start for resume
   final eTag = resumeData?.eTag;
-  isResume =
-      isResume &&
+  isResume = isResume &&
       await determineIfResumeIsPossible(tempFilePath, requiredStartByte);
   final client = DesktopDownloader.httpClient;
   var request = http.Request(
@@ -277,7 +276,8 @@ Future<TaskStatus> processOkDownloadResponse(
         File(actualTempFilePath).deleteSync();
       }
     } catch (e) {
-      logError(downloadTask, 'Could not delete temp file $actualTempFilePath: $e');
+      logError(
+          downloadTask, 'Could not delete temp file $actualTempFilePath: $e');
     }
   }
   return resultStatus;
