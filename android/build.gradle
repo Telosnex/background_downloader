@@ -4,7 +4,8 @@ plugins {
 }
 
 def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
-if (agpMajor < 9) {
+def isBuiltInKotlinFalse = project.hasProperty('builtInKotlin') && (project.property('builtInKotlin') == false || project.property('builtInKotlin') == 'false')
+if (agpMajor < 9 || isBuiltInKotlinFalse) {
     apply plugin: ['kotlin', 'android'].join('-')
 }
 
