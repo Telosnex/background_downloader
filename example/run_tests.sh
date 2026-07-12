@@ -66,7 +66,7 @@ LOGFILE="integration_test/logs/$(($(date +%s))).log"
 
 # List of device IDs to run tests on.
 DEVICE_IDS=(
-  "8715BE69-FDE4-4A44-A205-D9F3258EA31C"     # iOS emulator
+  "1FDD0187-F9F7-49C6-8AA6-BF7AFE934E5F"     # iOS emulator
   "emulator-5554"                          # Android Emulator
   "macos"                                  # macOS target
 )

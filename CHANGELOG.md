@@ -1,3 +1,14 @@
+## 9.5.6
+
+* [Android] Bug fixes and build improvements:
+  - Fixes Application Not Responding (ANR) crash when canceling binary uploads via notification action (fixes #664)
+  - Corrects ETag validation logic and saves the correct server ETag during a timeout-pause (fixes #683)
+  - Adds fallback to legacy `kotlin-android` plugin in Gradle build if `builtInKotlin` is configured to `false` (closes #674)
+* [iOS] Swift Package Manager (SPM) and build fixes:
+  - Resolves package dependency resolution errors when using SPM by removing invalid `FlutterFramework` dependency path in Package.swift
+  - Restores compatibility with older Flutter SDKs in the example app's `AppDelegate.swift`
+* [Chore / Maintenance] Updated GitHub Actions workflow configurations to resolve Node 20 deprecation warnings
+
 ## 9.5.5
 
 * [Android] Bug fixes and performance improvements:
