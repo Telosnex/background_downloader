@@ -88,6 +88,12 @@ class HoldingQueue {
         let toRemove = queue.filter( { taskIds.contains($0.task.taskId) } )
         toRemove.forEach { item in
             processStatusUpdate(task: item.task, status: .canceled)
+            if let configString = item.notificationConfigJsonString,
+               let config = notificationConfigFrom(jsonString: configString) {
+                _Concurrency.Task {
+                    await updateGroupNotification(task: item.task, notificationType: .canceled, notificationConfig: config)
+                }
+            }
             os_log("Canceled task with id %@", log: log, type: .info, item.task.taskId)
         }
         queue.removeAll(where: { taskIds.contains($0.task.taskId)})

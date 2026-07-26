@@ -248,7 +248,7 @@ func updateNotification(task: Task, notificationType: NotificationType, notifica
  * A group notification aggregates the state of all tasks in a group and
  * presents a notification based on that value
  */
-private func updateGroupNotification(
+func updateGroupNotification(
     task: Task,
     notificationType: NotificationType,
     notificationConfig: NotificationConfig

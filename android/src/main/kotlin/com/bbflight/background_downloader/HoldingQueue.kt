@@ -18,6 +18,7 @@ import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 import android.app.job.JobScheduler
 import android.os.Build
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
@@ -150,6 +151,14 @@ class HoldingQueue(private val context: Context, private val workManager: WorkMa
         toRemove.forEach {
             queue.remove(it)
             TaskWorker.processStatusUpdate(it.task, TaskStatus.canceled, prefs, context = context)
+            if (it.notificationConfigJsonString != null) {
+                NotificationService.createUpdateNotificationWorker(
+                    context,
+                    Json.encodeToString(it.task),
+                    it.notificationConfigJsonString,
+                    TaskStatus.canceled.ordinal
+                )
+            }
             Log.i(BDPlugin.TAG, "Canceled task with id ${it.task.taskId}")
         }
         removedTaskIds = toRemove.map { it.task.taskId }.toMutableList()
