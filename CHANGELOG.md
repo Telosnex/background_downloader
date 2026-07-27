@@ -1,3 +1,13 @@
+## 9.5.7
+
+* [Android] Bug fixes:
+  - Fixes group notification sticking in running state when cancelling tasks from holding queue
+  - Fixes `ConcurrentModificationException` in `canSendCancellation` when processing concurrent status updates
+* [iOS] Bug fixes:
+  - Fixes group notification sticking in running state when cancelling tasks from holding queue
+  - Serializes access to group notification registry to prevent `EXC_BAD_ACCESS` race condition under concurrent status updates
+* [General] Defer `JsonProcessor` idle shutdown while requests are pending to prevent unexpected background isolate shutdown errors
+
 ## 9.5.6
 
 * [Android] Bug fixes and build improvements:
