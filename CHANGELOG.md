@@ -1,3 +1,9 @@
+## 9.5.8
+
+* Add `alsoRestartUploads` parameter to `FileDownloader.requireWiFi` to optionally cancel and restart running upload tasks when updating WiFi requirement (fixes #695)
+* [iOS] Fixes typo in `PrivacyInfo.xcprivacy` for photos and videos data collection key (`NSPrivacyCollectedDataTypePhotosorVideos`), resolving App Store submission validation errors (fixes #694)
+* [Documentation] Adds comprehensive documentation for `TaskStatusUpdate` and `TaskProgressUpdate` in `doc/status_updates.md` (fixes #684)
+
 ## 9.5.7
 
 * [Android] Bug fixes:
