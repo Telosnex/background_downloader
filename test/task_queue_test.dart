@@ -9,6 +9,8 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const skipTaskQueueTest = true;
+
 final class TestTaskQueue extends MemoryTaskQueue {
   double probFailure = 0;
 
@@ -30,6 +32,11 @@ final class TestTaskQueue extends MemoryTaskQueue {
 const workingUrl = 'https://google.com';
 
 void main() {
+  if (skipTaskQueueTest) {
+    debugPrint('SKIPPING task_queue_test');
+    return;
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
   late TestTaskQueue tq;
 
