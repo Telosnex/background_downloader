@@ -2,20 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
-import 'auth_test.mocks.dart';
-
-@GenerateMocks([http.Client])
 void main() {
   group('Auth class functionality', () {
-    late MockClient mockClient;
     late Auth auth;
 
     setUp(() {
-      mockClient = MockClient();
       auth = Auth(
         accessToken: 'initialAccessToken',
         refreshToken: 'initialRefreshToken',
@@ -27,19 +21,12 @@ void main() {
     });
 
     test('No change if token not expired', () async {
-      // Set up mock response for refresh request
-      when(
-        mockClient.post(
-          Uri.parse(auth.refreshUrl!),
-          headers: auth.refreshHeaders,
-          body: jsonEncode({'refresh_token': auth.refreshToken}),
-        ),
-      ).thenAnswer(
-        (_) async => http.Response(
+      final mockClient = MockClient((request) async {
+        return http.Response(
           jsonEncode({'access_token': 'newAccessToken', 'expires_in': 3600}),
           200,
-        ),
-      );
+        );
+      });
       auth.accessTokenExpiryTime = null; // never expires
       auth.accessQueryParams = {'accessToken': '{accessToken}'};
       Uri uri = await auth.getAccessUri(
@@ -52,14 +39,9 @@ void main() {
     });
 
     test('HttpException if client returns error', () async {
-      // Set up mock response for refresh request
-      when(
-        mockClient.post(
-          Uri.parse(auth.refreshUrl!),
-          headers: auth.refreshHeaders,
-          body: jsonEncode({'refresh_token': auth.refreshToken}),
-        ),
-      ).thenAnswer((_) async => http.Response('', 400));
+      final mockClient = MockClient((request) async {
+        return http.Response('', 400);
+      });
       auth.accessQueryParams = {'accessToken': '{accessToken}'};
       expect(
         () => auth.getAccessUri(
@@ -73,26 +55,16 @@ void main() {
     test(
       'Token refresh updates accessToken and accessTokenExpiryTime',
       () async {
-        // Set up mock response for refresh request
-        when(
-          mockClient.post(
-            Uri.parse(auth.refreshUrl!),
-            headers: {'Content-type': 'application/json'},
-            body: jsonEncode({
-              'grant_type': 'refresh_token',
-              'refresh_token': auth.refreshToken,
-            }),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
+        final mockClient = MockClient((request) async {
+          return http.Response(
             jsonEncode({
               'access_token': 'newAccessToken',
               'expires_in': 3600,
               'refresh_token': 'newRefreshToken',
             }),
             200,
-          ),
-        );
+          );
+        });
         final (updatedAccessToken, updatedRefreshToken) = await auth
             .refreshAccessToken(httpClient: mockClient);
         // Check if tokens and expiry time are updated
@@ -105,22 +77,12 @@ void main() {
     );
 
     test('getAccessUri refreshes token if expired', () async {
-      // Set up mock response for refresh request
-      when(
-        mockClient.post(
-          Uri.parse(auth.refreshUrl!),
-          headers: {'Content-type': 'application/json'},
-          body: jsonEncode({
-            'grant_type': 'refresh_token',
-            'refresh_token': auth.refreshToken,
-          }),
-        ),
-      ).thenAnswer(
-        (_) async => http.Response(
+      final mockClient = MockClient((request) async {
+        return http.Response(
           jsonEncode({'access_token': 'newAccessToken', 'expires_in': 3600}),
           200,
-        ),
-      );
+        );
+      });
       auth.accessQueryParams = {'accessToken': '{accessToken}'};
       Uri uri = await auth.getAccessUri(
         url: 'https://example.com/resource',
