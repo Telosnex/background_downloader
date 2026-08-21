@@ -273,7 +273,7 @@ class BDPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 success = try {
                     val operation = try {
                         workManager.enqueue(requestBuilder.build())
-                    } catch (e: IllegalStateException) {
+                    } catch (e: Exception) {
                          if (expedited) {
                              Log.i(TAG, "Could not enqueue expedited task, falling back to non-expedited")
                              val nonExpeditedRequestBuilder =
