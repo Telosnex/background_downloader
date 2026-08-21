@@ -194,53 +194,50 @@ class BDPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 taskIdsRequiringWiFi.add(task.taskId)
             }
 
-            val success: Boolean
+            var success = false
             if (useJobScheduler) {
-                val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-                val componentName = ComponentName(context, UIDTJobService::class.java)
-                val extras = PersistableBundle().apply {
-                    putString(TaskWorker.keyTask, taskToJsonString(task))
-                    if (notificationConfigJsonString != null) {
-                        putString(TaskWorker.keyNotificationConfig, notificationConfigJsonString)
+                try {
+                    val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+                    val componentName = ComponentName(context, UIDTJobService::class.java)
+                    val extras = PersistableBundle().apply {
+                        putString(TaskWorker.keyTask, taskToJsonString(task))
+                        if (notificationConfigJsonString != null) {
+                            putString(TaskWorker.keyNotificationConfig, notificationConfigJsonString)
+                        }
+                        if (resumeData != null) {
+                            putString(TaskWorker.keyResumeDataData, resumeData.data)
+                            putLong(TaskWorker.keyStartByte, resumeData.requiredStartByte)
+                            putString(TaskWorker.keyETag, resumeData.eTag)
+                        }
                     }
-                    if (resumeData != null) {
-                        putString(TaskWorker.keyResumeDataData, resumeData.data)
-                        putLong(TaskWorker.keyStartByte, resumeData.requiredStartByte)
-                        putString(TaskWorker.keyETag, resumeData.eTag)
+                    
+                    val jobInfoBuilder = JobInfo.Builder(task.taskId.hashCode(), componentName)
+                        .setRequiredNetworkType(if (taskRequiresWifi) JobInfo.NETWORK_TYPE_UNMETERED else JobInfo.NETWORK_TYPE_ANY)
+                        .setRequiresCharging(false)
+                        .setExtras(extras)
+                    
+                    if (Build.VERSION.SDK_INT >= 34) {
+                        jobInfoBuilder.setUserInitiated(true)
+                        // Provide a default estimate if actual size is unknown to help OS scheduling
+                        jobInfoBuilder.setEstimatedNetworkBytes(1024L * 1024L * 10L, JobInfo.NETWORK_BYTES_UNKNOWN.toLong())
                     }
-                }
-                
-                val jobInfoBuilder = JobInfo.Builder(task.taskId.hashCode(), componentName)
-                    .setRequiredNetworkType(if (taskRequiresWifi) JobInfo.NETWORK_TYPE_UNMETERED else JobInfo.NETWORK_TYPE_ANY)
-                    .setRequiresCharging(false)
-                    .setExtras(extras)
-                
-                if (Build.VERSION.SDK_INT >= 34) {
-                    jobInfoBuilder.setUserInitiated(true)
-                    // Provide a default estimate if actual size is unknown to help OS scheduling
-                    jobInfoBuilder.setEstimatedNetworkBytes(1024L * 1024L * 10L, JobInfo.NETWORK_BYTES_UNKNOWN.toLong())
-                }
 
-                if (actualDelayMillis > 0L) {
-                    jobInfoBuilder.setMinimumLatency(actualDelayMillis)
+                    if (actualDelayMillis > 0L && Build.VERSION.SDK_INT < 34) {
+                        jobInfoBuilder.setMinimumLatency(actualDelayMillis)
+                    }
+                    
+                    val result = jobScheduler.schedule(jobInfoBuilder.build())
+                    success = (result == JobScheduler.RESULT_SUCCESS)
+                    if (!success) {
+                        Log.w(TAG, "Unable to schedule JobScheduler job for taskId ${task.taskId}, falling back to WorkManager")
+                        useJobScheduler = false
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Exception scheduling JobScheduler job for taskId ${task.taskId}, falling back to WorkManager", e)
+                    useJobScheduler = false
                 }
-                // JobScheduler will persist tasks across reboots if strictly necessary, 
-                // but WorkManager handles this better. 
-                // However user requested UIDT which implies immediate execution mostly.
-                // We set persisted to true? JobInfo.Builder.setPersisted(true) requires RECEIVE_BOOT_COMPLETED.
-                // WorkManager handles persistence. JobScheduler needs manual handling?
-                // UIDT is mostly for immediate user-initiated transfers.
-                // Let's set persisted to true if we can, but we need the permission.
-                // For now, default to false (not persisted across reboot) unless we add permission.
-                // background_downloader typically expects persistence?
-                // JobScheduler jobs are not persisted by default.
-                
-                val result = jobScheduler.schedule(jobInfoBuilder.build())
-                success = (result == JobScheduler.RESULT_SUCCESS)
-                if (!success) {
-                    Log.w(TAG, "Unable to schedule JobScheduler job for taskId ${task.taskId}")
-                }
-            } else {
+            }
+            if (!useJobScheduler) {
                 // Use WorkManager
                 val dataBuilder = Data.Builder().putString(TaskWorker.keyTask, taskToJsonString(task))
                 if (notificationConfigJsonString != null) {
