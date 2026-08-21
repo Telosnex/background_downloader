@@ -343,13 +343,22 @@ class DownloadTaskRunner(context: TaskJobContext) : TaskRunner(context) {
                             "Task ${task.taskId} paused due to timeout, will resume in 1 second"
                         )
                         val start = bytesTotal + startByte
-                        BDPlugin.doEnqueue(
+                        val success = BDPlugin.doEnqueue(
                             context.appContext,
                             task,
                             notificationConfigJsonString,
                             ResumeData(task, tempFilePath, start, eTagHeader),
                             1000
                         )
+                        if (!success) {
+                            Log.w(TAG, "Task ${task.taskId} timed out and could not re-enqueue to resume")
+                            taskException = TaskException(
+                                ExceptionType.general,
+                                description = "Task timed out and could not re-enqueue to resume"
+                            )
+                            cleanup(usesUri, destUri)
+                            return TaskStatus.failed
+                        }
                         return TaskStatus.paused
                     }
                     Log.i(TAG, "Task ${task.taskId} timed out and cannot pause/resume")
