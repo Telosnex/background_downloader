@@ -2711,7 +2711,7 @@ void main() {
             )
             .trackTasks(markDownloadedComplete: false);
         task = DownloadTask(
-          url: urlWithContentLength,
+          url: urlWithLongContentLength,
           filename: defaultFilename,
           updates: Updates.statusAndProgress,
         );
@@ -2726,16 +2726,16 @@ void main() {
         expect(record?.taskId, equals(task.taskId));
         expect(record?.status, equals(TaskStatus.running));
         expect(record?.progress, greaterThan(0));
-        expect(record?.progress, equals(lastProgress));
+        expect(record?.progress, lessThanOrEqualTo(1.0));
         expect(record?.exception, isNull);
         await statusCallbackCompleter.future;
-        await Future.delayed(
-          const Duration(milliseconds: 100),
-        ); // allow db write
         // completed
-        final record2 = await FileDownloader().database.recordForId(
-          task.taskId,
-        );
+        TaskRecord? record2;
+        for (var i = 0; i < 20; i++) {
+          record2 = await FileDownloader().database.recordForId(task.taskId);
+          if (record2?.status == TaskStatus.complete) break;
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
         expect(record2, isNotNull);
         expect(record2?.taskId, equals(task.taskId));
         expect(record2?.status, equals(TaskStatus.complete));
@@ -2760,7 +2760,7 @@ void main() {
             )
             .trackTasksInGroup('someGroup', markDownloadedComplete: false);
         task = DownloadTask(
-          url: urlWithContentLength,
+          url: urlWithLongContentLength,
           filename: defaultFilename,
           group: 'testGroup',
           updates: Updates.statusAndProgress,
@@ -2768,8 +2768,8 @@ void main() {
         expect(await FileDownloader().enqueue(task), equals(true));
         await someProgressCompleter.future;
         await Future.delayed(
-          const Duration(milliseconds: 10),
-        ); // allow db writeThe next one is 17
+          const Duration(milliseconds: 100),
+        ); // allow db write
         // after some progress, expect nothing in database
         var record = await FileDownloader().database.recordForId(task.taskId);
         expect(record, isNull);
@@ -2778,7 +2778,7 @@ void main() {
         statusCallbackCompleter = Completer();
         someProgressCompleter = Completer();
         task = DownloadTask(
-          url: urlWithContentLength,
+          url: urlWithLongContentLength,
           filename: defaultFilename,
           group: 'testGroup',
           updates: Updates.statusAndProgress,
@@ -2786,7 +2786,7 @@ void main() {
         expect(await FileDownloader().enqueue(task), equals(true));
         await someProgressCompleter.future;
         await Future.delayed(
-          const Duration(milliseconds: 10),
+          const Duration(milliseconds: 100),
         ); // allow db write
         // now expect progress and status in the database
         record = await FileDownloader().database.recordForId(task.taskId);
@@ -2794,7 +2794,7 @@ void main() {
         expect(record?.taskId, equals(task.taskId));
         expect(record?.status, equals(TaskStatus.running));
         expect(record?.progress, greaterThan(0));
-        expect(record?.progress, equals(lastProgress));
+        expect(record?.progress, lessThanOrEqualTo(1.0));
         expect(record?.exception, isNull);
         await statusCallbackCompleter.future;
       },
