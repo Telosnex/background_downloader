@@ -3,6 +3,7 @@ package com.bbflight.background_downloader
 import android.app.job.JobParameters
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import androidx.preference.PreferenceManager
 import kotlinx.coroutines.CancellationException
@@ -110,6 +111,7 @@ open class TaskRunner(
         const val bufferSize = 2 shl 12
 
         const val taskTimeoutMillis = 9 * 60 * 1000L  // 9 minutes
+        const val expeditedTaskTimeoutMillis = 2 * 60 * 1000L  // 2 minutes
 
         /** Converts [Task] to JSON string representation */
         fun taskToJsonString(task: Task): String {
@@ -470,11 +472,13 @@ open class TaskRunner(
         runInForegroundFileSize =
             prefs.getInt(BDPlugin.keyConfigForegroundFileSize, -1)
         withContext(Dispatchers.IO) {
+            task = context.task
+            val isExpedited = task.priority < 5 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            val timeout = if (isExpedited) expeditedTaskTimeoutMillis else taskTimeoutMillis
             CoroutineScope(Dispatchers.Default).launch {
-                delay(taskTimeoutMillis)
+                delay(timeout)
                 isTimedOut = true
             }
-            task = context.task
             if (task.options?.hasBeforeStartCallback() == true) {
                 val statusUpdate = Callbacks.invokeBeforeTaskStartCallback(context.appContext, task)
                 if (statusUpdate != null) {
