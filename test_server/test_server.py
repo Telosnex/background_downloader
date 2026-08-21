@@ -19,6 +19,23 @@ FILE_DELAYS = {
 
 FILES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'files')
 
+def ensure_test_files():
+    """Ensures test files directory and test files exist."""
+    os.makedirs(FILES_DIR, exist_ok=True)
+    test_files = {
+        '1MB-test.bin': 1024 * 1024,
+        '5MB-test.ZIP': 6207471,
+        '57MB-test.ZIP': 57 * 1024 * 1024
+    }
+    for filename, size in test_files.items():
+        filepath = os.path.join(FILES_DIR, filename)
+        if not os.path.exists(filepath) or os.path.getsize(filepath) != size:
+            with open(filepath, 'wb') as f:
+                f.write(b'\0' * size)
+
+ensure_test_files()
+
+
 def get_json_data(request):
     """
     Attempts to get JSON data from the request.
