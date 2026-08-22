@@ -70,15 +70,13 @@ abstract base class NativeDownloader extends BaseDownloader {
           processStatusUpdate(TaskStatusUpdate(task, status));
         } else {
           // this is a chunk task, so pass to native
-          Future.delayed(const Duration(milliseconds: 100)).then(
-            (_) => methodChannel.invokeMethod('chunkStatusUpdate', [
-              Chunk.getParentTaskId(task),
-              task.taskId,
-              status.index,
-              null,
-              null,
-            ]),
-          );
+          await methodChannel.invokeMethod('chunkStatusUpdate', [
+            Chunk.getParentTaskId(task),
+            task.taskId,
+            status.index,
+            null,
+            null,
+          ]);
         }
 
       // status update with responseBody, responseHeaders, responseStatusCode, mimeType and charSet (normal completion)
@@ -119,15 +117,13 @@ abstract base class NativeDownloader extends BaseDownloader {
           );
         } else {
           // this is a chunk task, so pass to native
-          Future.delayed(const Duration(milliseconds: 100)).then(
-            (_) => methodChannel.invokeMethod('chunkStatusUpdate', [
-              Chunk.getParentTaskId(task),
-              task.taskId,
-              status.index,
-              null,
-              responseBody,
-            ]),
-          );
+          await methodChannel.invokeMethod('chunkStatusUpdate', [
+            Chunk.getParentTaskId(task),
+            task.taskId,
+            status.index,
+            null,
+            responseBody,
+          ]);
         }
 
       // status update with TaskException and responseBody
@@ -156,15 +152,13 @@ abstract base class NativeDownloader extends BaseDownloader {
           );
         } else {
           // this is a chunk task, so pass to native
-          Future.delayed(const Duration(milliseconds: 100)).then(
-            (_) => methodChannel.invokeMethod('chunkStatusUpdate', [
-              Chunk.getParentTaskId(task),
-              task.taskId,
-              status.index,
-              exception?.toJsonString(),
-              responseBody,
-            ]),
-          );
+          await methodChannel.invokeMethod('chunkStatusUpdate', [
+            Chunk.getParentTaskId(task),
+            task.taskId,
+            status.index,
+            exception?.toJsonString(),
+            responseBody,
+          ]);
         }
 
       case (
@@ -189,13 +183,11 @@ abstract base class NativeDownloader extends BaseDownloader {
         } else {
           // this is a chunk task, so pass parent taskId,
           // chunk taskId and progress to native
-          Future.delayed(const Duration(milliseconds: 100)).then(
-            (_) => methodChannel.invokeMethod('chunkProgressUpdate', [
-              Chunk.getParentTaskId(task),
-              task.taskId,
-              progress,
-            ]),
-          );
+          await methodChannel.invokeMethod('chunkProgressUpdate', [
+            Chunk.getParentTaskId(task),
+            task.taskId,
+            progress,
+          ]);
         }
 
       case ('canResume', bool canResume):
@@ -218,27 +210,21 @@ abstract base class NativeDownloader extends BaseDownloader {
       // from ParallelDownloadTask
       case ('enqueueChild', String childTaskJsonString):
         final childTask = await JsonProcessor().decodeTask(childTaskJsonString);
-        Future.delayed(
-          const Duration(milliseconds: 100),
-        ).then((_) => FileDownloader().enqueue(childTask));
+        await FileDownloader().enqueue(childTask);
 
       // from ParallelDownloadTask
       case ('cancelTasksWithId', String listOfTaskIdsJson):
         final taskIds = List<String>.from(jsonDecode(listOfTaskIdsJson));
-        Future.delayed(
-          const Duration(milliseconds: 100),
-        ).then((_) => FileDownloader().cancelTasksWithIds(taskIds));
+        await FileDownloader().cancelTasksWithIds(taskIds);
 
       // from ParallelDownloadTask
       case ('pauseTasks', String listOfTasksJson):
         final listOfTasks = await JsonProcessor().decodeDownloadTaskList(
           listOfTasksJson,
         );
-        Future.delayed(const Duration(milliseconds: 100)).then((_) async {
-          for (final chunkTask in listOfTasks) {
-            await FileDownloader().pause(chunkTask);
-          }
-        });
+        for (final chunkTask in listOfTasks) {
+          await FileDownloader().pause(chunkTask);
+        }
 
       // for permission request results
       case ('permissionRequestResult', int statusOrdinal):
