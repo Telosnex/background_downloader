@@ -270,7 +270,10 @@ Future<TaskStatus> processOkDownloadResponse(
           bytesTotal + startByte,
           eTagHeader,
         ));
-      } else if (resultStatus != TaskStatus.paused) {
+      } else if (resultStatus != TaskStatus.paused &&
+          !(isResume &&
+              serverAcceptsRanges &&
+              File(actualTempFilePath).existsSync())) {
         File(actualTempFilePath).deleteSync();
       }
     } catch (e) {
