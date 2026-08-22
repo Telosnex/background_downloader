@@ -87,15 +87,26 @@ suspend fun moveToSharedStorage(
                 "Error moving file $filePathOrUriString to shared storage: $e"
             )
         } finally {
-            contentValues.clear()
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            try {
-                resolver.update(uri, contentValues, null, null)
-            } catch (e: Exception) {
-                Log.i(
-                    BDPlugin.TAG,
-                    "Failed to reset IS_PENDING: $e"
-                )
+            if (success) {
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                try {
+                    resolver.update(uri, contentValues, null, null)
+                } catch (e: Exception) {
+                    Log.i(
+                        BDPlugin.TAG,
+                        "Failed to reset IS_PENDING: $e"
+                    )
+                }
+            } else {
+                try {
+                    resolver.delete(uri, null, null)
+                } catch (e: Exception) {
+                    Log.i(
+                        BDPlugin.TAG,
+                        "Failed to delete incomplete MediaStore entry: $e"
+                    )
+                }
             }
         }
     }
