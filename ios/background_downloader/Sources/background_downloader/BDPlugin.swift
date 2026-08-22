@@ -619,10 +619,8 @@ public class BDPlugin: NSObject, FlutterPlugin, UNUserNotificationCenterDelegate
         }
         
         guard let resumeData = await urlSessionTask.cancelByProducingResumeData() else {
-            os_log("Could not pause task %@", log: log, type: .info, taskId)
-            BDPlugin.propertyLock.withLock({
-                _ = BDPlugin.taskIdsProgrammaticallyCanceledAfterStart.remove(taskId)
-            })
+            os_log("Could not pause task %@ (cannot produce resume data)", log: log, type: .info, taskId)
+            processStatusUpdate(task: task, status: .failed, taskException: TaskException(type: .resume, description: "Task was paused but cannot resume"))
             return false
         }
         
@@ -643,6 +641,7 @@ public class BDPlugin: NSObject, FlutterPlugin, UNUserNotificationCenterDelegate
             return true
         } else {
             os_log("Could not post resume data for taskId %@: task paused but cannot be resumed", log: log, type: .info, taskId)
+            processStatusUpdate(task: task, status: .failed, taskException: TaskException(type: .resume, description: "Task was paused but cannot resume"))
             return false
         }
     }
