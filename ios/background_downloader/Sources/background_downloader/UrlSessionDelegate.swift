@@ -92,10 +92,11 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
             // status update already generated, so simply return without any further processing
             return
         }
-        let multipartUploader = BDPlugin.uploaderForUrlSessionTaskIdentifier[task.taskIdentifier]
-        if multipartUploader != nil {
-            try? FileManager.default.removeItem(at: multipartUploader!.outputFileUrl())
+        let multipartUploader = BDPlugin.propertyLock.withLock {
             BDPlugin.uploaderForUrlSessionTaskIdentifier.removeValue(forKey: task.taskIdentifier)
+        }
+        if let uploader = multipartUploader {
+            try? FileManager.default.removeItem(at: uploader.outputFileUrl())
         }
         let responseStatusCode = (task.response as? HTTPURLResponse)?.statusCode ?? 0
         let responseStatusDescription = HTTPURLResponse.localizedString(forStatusCode: responseStatusCode)
