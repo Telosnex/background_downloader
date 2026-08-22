@@ -165,13 +165,12 @@ open class TaskRunner(
                             BDPlugin.localResumeData[task.taskId]
                         )
                     )
-                    if (BDPlugin.tasksToReEnqueue.isEmpty()) {
-                        WiFi.reEnqueue(null) // signal end of batch
-                    }
-                    return
                 }
                 if (BDPlugin.tasksToReEnqueue.isEmpty()) {
                     WiFi.reEnqueue(null) // signal end of batch
+                }
+                if (status == TaskStatus.paused || status == TaskStatus.canceled || status == TaskStatus.failed) {
+                    return
                 }
             }
 

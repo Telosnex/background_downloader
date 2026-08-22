@@ -34,19 +34,48 @@ object WiFi {
         scope.launch {
             for (change in requireWiFiQueue) {
                 requireWiFiLock.lock()
-                if (!change.execute() && requireWiFiLock.isLocked) {
-                    // no re-enqueues, so unblock the requireWiFiQueue immediately
-                    requireWiFiLock.unlock()
+                try {
+                    val haveReEnqueued = change.execute()
+                    if (!haveReEnqueued && requireWiFiLock.isLocked) {
+                        // no re-enqueues, so unblock the requireWiFiQueue immediately
+                        requireWiFiLock.unlock()
+                    } else if (haveReEnqueued) {
+                        // Launch a watchdog timeout so requireWiFiLock is never permanently stuck
+                        scope.launch {
+                            delay(15000)
+                            if (requireWiFiLock.isLocked) {
+                                Log.w(BDPlugin.TAG, "WiFi re-enqueue watchdog timeout; unlocking requireWiFiLock")
+                                BDPlugin.tasksToReEnqueue.clear()
+                                try {
+                                    requireWiFiLock.unlock()
+                                } catch (_: IllegalStateException) {}
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(BDPlugin.TAG, "Exception during requireWiFiChange execution: $e")
+                    if (requireWiFiLock.isLocked) {
+                        try {
+                            requireWiFiLock.unlock()
+                        } catch (_: IllegalStateException) {}
+                    }
                 }
             }
         }
 
         scope.launch {
             for (reEnqueue in reEnqueueQueue) {
-                reEnqueue?.enqueue()
-                if (reEnqueue == null && requireWiFiLock.isLocked) {
-                    // null signals all reEnqueue items are enqueued
-                    requireWiFiLock.unlock()
+                try {
+                    reEnqueue?.enqueue()
+                } catch (e: Exception) {
+                    Log.e(BDPlugin.TAG, "Exception during WiFi reEnqueue: $e")
+                } finally {
+                    if (reEnqueue == null && requireWiFiLock.isLocked) {
+                        // null signals all reEnqueue items are enqueued
+                        try {
+                            requireWiFiLock.unlock()
+                        } catch (_: IllegalStateException) {}
+                    }
                 }
             }
         }
