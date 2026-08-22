@@ -201,47 +201,48 @@ class UploadTaskRunner(context: TaskJobContext) : TaskRunner(context) {
         }
         // Check for failures in getting fileSize and inputStream
         if (fileSize == null || inputStream == null) {
+            try { inputStream?.close() } catch (_: Exception) {}
             return TaskStatus.failed
         }
-        // Extract Range header information
-        var start = 0L
-        var end = fileSize - 1 // Default to the whole file
-        val rangeHeader = task.headers["Range"]
-        if (rangeHeader != null) {
-            val match = Regex("""bytes=(\d+)-(\d*)""").find(rangeHeader)
-            if (match != null) {
-                start = match.groupValues[1].toLong()
-                if (match.groupValues.size > 2 && match.groupValues[2].isNotEmpty()) {
-                    end = match.groupValues[2].toLong()
+        return inputStream.use { fis ->
+            // Extract Range header information
+            var start = 0L
+            var end = fileSize - 1 // Default to the whole file
+            val rangeHeader = task.headers["Range"]
+            if (rangeHeader != null) {
+                val match = Regex("""bytes=(\d+)-(\d*)""").find(rangeHeader)
+                if (match != null) {
+                    start = match.groupValues[1].toLong()
+                    if (match.groupValues.size > 2 && match.groupValues[2].isNotEmpty()) {
+                        end = match.groupValues[2].toLong()
+                    }
+                } else {
+                    val message = "Invalid Range header $rangeHeader"
+                    Log.w(TAG, message)
+                    taskException = TaskException(
+                        ExceptionType.general,
+                        description = message
+                    )
+                    return TaskStatus.failed
                 }
-            } else {
-                val message = "Invalid Range header $rangeHeader"
-                Log.w(TAG, message)
-                taskException = TaskException(
-                    ExceptionType.general,
-                    description = message
-                )
-                return TaskStatus.failed
             }
-        }
-        val contentLength = end - start + 1
-        determineRunInForeground(task, contentLength)
-        context.updateEstimatedNetworkBytes(0L, contentLength)
-        Log.d(TAG, "Binary upload for taskId ${task.taskId}")
-        connection.setRequestProperty("Content-Type", resolvedMimeType)
-        val taskContentDisposition =
-            task.headers["Content-Disposition"] ?: task.headers["content-disposition"]
-        if (taskContentDisposition != "") {
-            connection.setRequestProperty(
-                "Content-Disposition",
-                taskContentDisposition
-                    ?: ("attachment; filename=\"" + Uri.encode(task.filename) + "\"")
-            )
-        }
-        connection.setRequestProperty("Content-Length", contentLength.toString())
-        connection.setFixedLengthStreamingMode(contentLength)
-        return withContext(Dispatchers.IO) {
-            inputStream.use { fis ->
+            val contentLength = end - start + 1
+            determineRunInForeground(task, contentLength)
+            context.updateEstimatedNetworkBytes(0L, contentLength)
+            Log.d(TAG, "Binary upload for taskId ${task.taskId}")
+            connection.setRequestProperty("Content-Type", resolvedMimeType)
+            val taskContentDisposition =
+                task.headers["Content-Disposition"] ?: task.headers["content-disposition"]
+            if (taskContentDisposition != "") {
+                connection.setRequestProperty(
+                    "Content-Disposition",
+                    taskContentDisposition
+                        ?: ("attachment; filename=\"" + Uri.encode(task.filename) + "\"")
+                )
+            }
+            connection.setRequestProperty("Content-Length", contentLength.toString())
+            connection.setFixedLengthStreamingMode(contentLength)
+            withContext(Dispatchers.IO) {
                 if (rangeHeader != null) {
                     // Special treatment for partial uploads
                     fis.skip(start)
@@ -320,69 +321,101 @@ class UploadTaskRunner(context: TaskJobContext) : TaskRunner(context) {
         val contentDispositionStrings = ArrayList<String>()
         val contentTypeStrings = ArrayList<String>()
         val fileLengthsOrStreams = ArrayList<Pair<Long?, InputStream?>>()
-        var useChunkedEncoding = false
-        for ((fileField, pathOrUriString, mimeType) in filesData) {
-            var resolvedMimeType = mimeType // we need to change it if it is empty
-            try {
-                val fileUri = UriUtils.uriFromStringValue(pathOrUriString)
-                val (fileSize, inputStream) = if (fileUri != null) {
-                    if (fileUri.scheme != "file") {
-                        // a content:// URI scheme is resolved via the contentResolver
-                        val contentResolver = context.appContext.contentResolver
-                        // Get file size from URI, or set to null
-                        val fileSize =
-                            contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
-                                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                                if (sizeIndex != -1 && cursor.moveToFirst()) cursor.getLong(
-                                    sizeIndex
-                                ) else null
+        try {
+            var useChunkedEncoding = false
+            for ((fileField, pathOrUriString, mimeType) in filesData) {
+                var resolvedMimeType = mimeType // we need to change it if it is empty
+                try {
+                    val fileUri = UriUtils.uriFromStringValue(pathOrUriString)
+                    val (fileSize, inputStream) = if (fileUri != null) {
+                        if (fileUri.scheme != "file") {
+                            // a content:// URI scheme is resolved via the contentResolver
+                            val contentResolver = context.appContext.contentResolver
+                            // Get file size from URI, or set to null
+                            val fileSize =
+                                contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
+                                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                                    if (sizeIndex != -1 && cursor.moveToFirst()) cursor.getLong(
+                                        sizeIndex
+                                    ) else null
+                                }
+                            useChunkedEncoding = useChunkedEncoding ||
+                                    fileSize == null // Use chunked encoding if file size is unknown
+                            if (mimeType.isEmpty()) {
+                                resolvedMimeType = getMimeType(contentResolver, fileUri)
                             }
-                        useChunkedEncoding = useChunkedEncoding ||
-                                fileSize == null // Use chunked encoding if file size is unknown
-                        if (mimeType.isEmpty()) {
-                            resolvedMimeType = getMimeType(contentResolver, fileUri)
+                            // Get InputStream from URI
+                            val fileInputStream = contentResolver.openInputStream(fileUri)
+                            if (fileInputStream == null) {
+                                val message = "Could not open input stream for URI: $fileUri"
+                                Log.w(TAG, message)
+                                taskException = TaskException(
+                                    ExceptionType.fileSystem,
+                                    description = message
+                                )
+                                return TaskStatus.failed
+                            }
+                            Log.v(TAG, "Using InputStream from URI $fileUri")
+                            Pair(fileSize, fileInputStream)
+                        } else {
+                            // a file:// Uri scheme is interpreted as a regular file path
+                            val file = fileUri.toFile()
+                            val fileSize = file.length()
+                            if (mimeType.isEmpty()) {
+                                resolvedMimeType = getMimeType(fileUri.toString())
+                            }
+                            Log.v(TAG, "Using FileInputStream from URI $fileUri")
+                            Pair(fileSize, FileInputStream(file))
                         }
-                        // Get InputStream from URI
-                        val fileInputStream = contentResolver.openInputStream(fileUri)
-                        if (fileInputStream == null) {
-                            val message = "Could not open input stream for URI: $fileUri"
-                            Log.w(TAG, message)
+                    } else {
+                        val file = File(pathOrUriString)
+                        if (!file.exists() || !file.isFile) {
+                            Log.w(TAG, "File at $pathOrUriString does not exist")
                             taskException = TaskException(
                                 ExceptionType.fileSystem,
-                                description = message
+                                description = "File to upload does not exist: $pathOrUriString"
                             )
                             return TaskStatus.failed
                         }
-                        Log.v(TAG, "Using InputStream from URI $fileUri")
-                        Pair(fileSize, fileInputStream)
-                    } else {
-                        // a file:// Uri scheme is interpreted as a regular file path
-                        val file = fileUri.toFile()
-                        val fileSize = file.length()
                         if (mimeType.isEmpty()) {
-                            resolvedMimeType = getMimeType(fileUri.toString())
+                            resolvedMimeType = getMimeType(file.path)
                         }
-                        Log.v(TAG, "Using FileInputStream from URI $fileUri")
-                        Pair(fileSize, FileInputStream(file))
+                        Pair(file.length(), FileInputStream(file))
                     }
-                } else {
-                    val file = File(pathOrUriString)
-                    if (!file.exists() || !file.isFile) {
-                        Log.w(TAG, "File at $pathOrUriString does not exist")
+                    // we now have a possible content length and InputStream for this file
+                    if (!useChunkedEncoding && fileSize == null) {
+                        val message = "Could not determine file size for $pathOrUriString"
+                        Log.w(TAG, message)
                         taskException = TaskException(
                             ExceptionType.fileSystem,
-                            description = "File to upload does not exist: $pathOrUriString"
+                            description = message
                         )
                         return TaskStatus.failed
                     }
-                    if (mimeType.isEmpty()) {
-                        resolvedMimeType = getMimeType(file.path)
+                    // determine the file name
+                    val name = if (fileUri != null) {
+                        getFileNameFromUri(fileUri) ?: "unknown"
+                    } else {
+                        File(pathOrUriString).name
                     }
-                    Pair(file.length(), FileInputStream(file))
-                }
-                // we now have a possible content length and InputStream for this file
-                if (!useChunkedEncoding && fileSize == null) {
-                    val message = "Could not determine file size for $pathOrUriString"
+                    contentDispositionStrings.add(
+                        "Content-Disposition: form-data; name=\"${browserEncode(fileField)}\"; " +
+                                "filename=\"${browserEncode(name)}\"$lineFeed"
+                    )
+                    if (filesData.size == 1 && task.taskType != "MultiUploadTask") {
+                        // only for single file uploads do we set the task's filename property
+                        task = task.copyWith(
+                            filename = if (fileUri != null) UriUtils.pack(
+                                name,
+                                fileUri
+                            ) else name
+                        )
+                    }
+                    contentTypeStrings.add("Content-Type: $resolvedMimeType$lineFeed$lineFeed")
+                    fileLengthsOrStreams.add(Pair(fileSize, inputStream))
+                } catch (_: Exception) {
+                    val message =
+                        "Could not open file or determine file size for $pathOrUriString"
                     Log.w(TAG, message)
                     taskException = TaskException(
                         ExceptionType.fileSystem,
@@ -390,106 +423,82 @@ class UploadTaskRunner(context: TaskJobContext) : TaskRunner(context) {
                     )
                     return TaskStatus.failed
                 }
-                // determine the file name
-                val name = if (fileUri != null) {
-                    getFileNameFromUri(fileUri) ?: "unknown"
-                } else {
-                    File(pathOrUriString).name
-                }
-                contentDispositionStrings.add(
-                    "Content-Disposition: form-data; name=\"${browserEncode(fileField)}\"; " +
-                            "filename=\"${browserEncode(name)}\"$lineFeed"
-                )
-                if (filesData.size == 1 && task.taskType != "MultiUploadTask") {
-                    // only for single file uploads do we set the task's filename property
-                    task = task.copyWith(
-                        filename = if (fileUri != null) UriUtils.pack(
-                            name,
-                            fileUri
-                        ) else name
-                    )
-                }
-                contentTypeStrings.add("Content-Type: $resolvedMimeType$lineFeed$lineFeed")
-                fileLengthsOrStreams.add(Pair(fileSize, inputStream))
-            } catch (_: Exception) {
-                val message =
-                    "Could not open file or determine file size for $pathOrUriString"
-                Log.w(TAG, message)
-                taskException = TaskException(
-                    ExceptionType.fileSystem,
-                    description = message
-                )
-                return TaskStatus.failed
             }
-        }
 
-        // setup the connection
-        connection.setRequestProperty("Accept-Charset", "UTF-8")
-        connection.setRequestProperty("Connection", "Keep-Alive")
-        connection.setRequestProperty("Cache-Control", "no-cache")
-        connection.setRequestProperty(
-            "Content-Type", "multipart/form-data; boundary=$boundary"
-        )
-        if (!useChunkedEncoding) {
-            // Calculate total content length only if not using chunked encoding
-            val fileDataLength =
-                contentDispositionStrings.sumOf { string: String -> lengthInBytes(string) } +
-                        contentTypeStrings.sumOf { string: String -> string.length } +
-                        fileLengthsOrStreams.sumOf { pair ->
-                            pair.first ?: 0
-                        } + separator.length * contentDispositionStrings.size + 2
-            val contentLength =
-                lengthInBytes(fieldsString) + "--$boundary$lineFeed".length + fileDataLength
-            determineRunInForeground(task, contentLength)
-            context.updateEstimatedNetworkBytes(0L, contentLength)
-            connection.setRequestProperty("Content-Length", contentLength.toString())
-            connection.setFixedLengthStreamingMode(contentLength)
-        } else {
-            determineRunInForeground(task, 1024 * 1024 * 20) // assume at least 20MB
-            connection.setChunkedStreamingMode(0) // Use default chunk size
-        }
-        connection.useCaches = false
-        // transfer the bytes
-        return withContext(Dispatchers.IO) {
-            DataOutputStream(connection.outputStream).use { outputStream ->
-                val writer = outputStream.writer()
-                // write form fields
-                writer.append(fieldsString).append("--${boundary}").append(lineFeed)
-                // write each file
-                for (i in filesData.indices) {
-                    fileLengthsOrStreams[i].second.use { inputStream ->
-                        if (inputStream != null) {
-                            writer.append(contentDispositionStrings[i])
-                                .append(contentTypeStrings[i]).flush()
-                            val transferBytesResult =
-                                transferBytes(
-                                    inputStream,
-                                    outputStream,
-                                    fileLengthsOrStreams[i].first ?: 0,
-                                    task
-                                )
-                            if (transferBytesResult == TaskStatus.complete) {
-                                if (i < filesData.size - 1) {
-                                    writer.append(separator)
-                                } else
-                                    writer.append(terminator)
-                                writer.flush()
+            // setup the connection
+            connection.setRequestProperty("Accept-Charset", "UTF-8")
+            connection.setRequestProperty("Connection", "Keep-Alive")
+            connection.setRequestProperty("Cache-Control", "no-cache")
+            connection.setRequestProperty(
+                "Content-Type", "multipart/form-data; boundary=$boundary"
+            )
+            if (!useChunkedEncoding) {
+                // Calculate total content length only if not using chunked encoding
+                val fileDataLength =
+                    contentDispositionStrings.sumOf { string: String -> lengthInBytes(string) } +
+                            contentTypeStrings.sumOf { string: String -> string.length } +
+                            fileLengthsOrStreams.sumOf { pair ->
+                                pair.first ?: 0
+                            } + separator.length * contentDispositionStrings.size + 2
+                val contentLength =
+                    lengthInBytes(fieldsString) + "--$boundary$lineFeed".length + fileDataLength
+                determineRunInForeground(task, contentLength)
+                context.updateEstimatedNetworkBytes(0L, contentLength)
+                connection.setRequestProperty("Content-Length", contentLength.toString())
+                connection.setFixedLengthStreamingMode(contentLength)
+            } else {
+                determineRunInForeground(task, 1024 * 1024 * 20) // assume at least 20MB
+                connection.setChunkedStreamingMode(0) // Use default chunk size
+            }
+            connection.useCaches = false
+            // transfer the bytes
+            return withContext(Dispatchers.IO) {
+                DataOutputStream(connection.outputStream).use { outputStream ->
+                    val writer = outputStream.writer()
+                    // write form fields
+                    writer.append(fieldsString).append("--${boundary}").append(lineFeed)
+                    // write each file
+                    for (i in filesData.indices) {
+                        fileLengthsOrStreams[i].second.use { inputStream ->
+                            if (inputStream != null) {
+                                writer.append(contentDispositionStrings[i])
+                                    .append(contentTypeStrings[i]).flush()
+                                val transferBytesResult =
+                                    transferBytes(
+                                        inputStream,
+                                        outputStream,
+                                        fileLengthsOrStreams[i].first ?: 0,
+                                        task
+                                    )
+                                if (transferBytesResult == TaskStatus.complete) {
+                                    if (i < filesData.size - 1) {
+                                        writer.append(separator)
+                                    } else
+                                        writer.append(terminator)
+                                    writer.flush()
+                                } else {
+                                    return@withContext transferBytesResult
+                                }
                             } else {
-                                return@withContext transferBytesResult
+                                Log.w(TAG, "No input stream for ${filesData[i].first}")
+                                taskException = TaskException(
+                                    ExceptionType.fileSystem,
+                                    description = "No input stream for ${filesData[i].first}"
+                                )
+                                return@withContext TaskStatus.failed
                             }
-                        } else {
-                            Log.w(TAG, "No input stream for ${filesData[i].first}")
-                            taskException = TaskException(
-                                ExceptionType.fileSystem,
-                                description = "No input stream for ${filesData[i].first}"
-                            )
-                            return@withContext TaskStatus.failed
                         }
                     }
+                    writer.close()
                 }
-                writer.close()
+                return@withContext TaskStatus.complete
             }
-            return@withContext TaskStatus.complete
+        } finally {
+            for (pair in fileLengthsOrStreams) {
+                try {
+                    pair.second?.close()
+                } catch (_: Exception) {}
+            }
         }
     }
 
