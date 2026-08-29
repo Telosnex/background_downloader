@@ -164,20 +164,22 @@ class HoldingQueue {
         
     }
     
-    /// Processes one item in the queue, if possible
+    /// Processes items in the queue, if possible
     private func processQueue() async {
         await stateLock.lock()
-        if concurrent < maxConcurrent {
+        var itemsToEnqueue = [EnqueueItem]()
+        while concurrent < maxConcurrent && !queue.isEmpty {
             var mustWait = [EnqueueItem]()
+            var foundItem: EnqueueItem? = nil
             while !queue.isEmpty {
                 let item = queue.removeFirst()
                 let host = getHost(item.task)
-                if concurrentByHost[host] ?? 0 < maxConcurrentByHost &&
-                    concurrentByGroup[item.task.group] ?? 0 < maxConcurrentByGroup {
+                if (concurrentByHost[host] ?? 0) < maxConcurrentByHost &&
+                    (concurrentByGroup[item.task.group] ?? 0) < maxConcurrentByGroup {
                     concurrent += 1
                     concurrentByHost[host, default: 0] += 1
                     concurrentByGroup[item.task.group, default: 0] += 1
-                    await item.enqueue()
+                    foundItem = item
                     break
                 } else {
                     mustWait.append(item)
@@ -185,8 +187,18 @@ class HoldingQueue {
             }
             queue.append(contentsOf: mustWait)
             queue.sort()
+            if let item = foundItem {
+                itemsToEnqueue.append(item)
+            } else {
+                break
+            }
         }
         await stateLock.unlock()
+        
+        // Enqueue items outside the stateLock to avoid blocking during network HEAD requests
+        for item in itemsToEnqueue {
+            await item.enqueue()
+        }
     }
     
     /**

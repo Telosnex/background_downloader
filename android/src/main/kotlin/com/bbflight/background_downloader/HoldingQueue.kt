@@ -41,7 +41,7 @@ class HoldingQueue(private val context: Context, private val workManager: WorkMa
     var maxConcurrentByHost: Int = 1 shl 20
     var maxConcurrentByGroup: Int = 1 shl 20
     val hostByTaskId = ConcurrentHashMap<String, String>()
-    val enqueuedTaskIds = mutableListOf<String>()
+    val enqueuedTaskIds: MutableSet<String> = ConcurrentHashMap.newKeySet<String>()
 
     private val concurrent = AtomicInteger(0)
     private val concurrentByHost = ConcurrentHashMap<String, AtomicInteger>()
@@ -57,43 +57,31 @@ class HoldingQueue(private val context: Context, private val workManager: WorkMa
     val stateMutex = Mutex()
 
     init {
-        // coroutine to process the queue, one item per signal
+        // coroutine to process the queue
         scope.launch {
             for (signal in processSignal) {  // signal comes from [advanceQueue]
                 stateMutex.withLock {
-                    if (concurrent.get() < maxConcurrent) {
-                        // walk through queue to find item that can be enqueued
-                        val mustWait = ArrayList<EnqueueItem>()
-                        while (queue.isNotEmpty()) {
-                            val item = queue.poll()
-                            if (item != null) {
-                                val host = item.task.host()
-                                val group = item.task.group
-                                if ((concurrentByHost[host]?.get()
-                                        ?: 0) < maxConcurrentByHost && (concurrentByGroup[group]?.get()
-                                        ?: 0) < maxConcurrentByGroup
-                                ) {
-                                    // enqueue this item after incrementing counters
-                                    concurrent.incrementAndGet()
-                                    if (!concurrentByHost.containsKey(host)) {
-                                        concurrentByHost[host] = AtomicInteger(0)
-                                    }
-                                    concurrentByHost[host]?.incrementAndGet()
-                                    if (!concurrentByGroup.containsKey(group)) {
-                                        concurrentByGroup[group] = AtomicInteger(0)
-                                    }
-                                    concurrentByGroup[group]?.incrementAndGet()
-                                    item.enqueue(afterDelayMillis = 0)
-                                    break
-                                } else {
-                                    // this item has to wait
-                                    mustWait.add(item)
-                                }
-                            }
+                    val mustWait = ArrayList<EnqueueItem>()
+                    while (concurrent.get() < maxConcurrent && queue.isNotEmpty()) {
+                        val item = queue.poll() ?: break
+                        val host = item.task.host()
+                        val group = item.task.group
+                        if ((concurrentByHost[host]?.get()
+                                ?: 0) < maxConcurrentByHost && (concurrentByGroup[group]?.get()
+                                ?: 0) < maxConcurrentByGroup
+                        ) {
+                            // enqueue this item after incrementing counters
+                            concurrent.incrementAndGet()
+                            concurrentByHost.computeIfAbsent(host) { AtomicInteger(0) }.incrementAndGet()
+                            concurrentByGroup.computeIfAbsent(group) { AtomicInteger(0) }.incrementAndGet()
+                            item.enqueue(afterDelayMillis = 0)
+                        } else {
+                            // this item has to wait
+                            mustWait.add(item)
                         }
-                        // add mustWait items back to the queue
-                        queue.addAll(mustWait)
                     }
+                    // add mustWait items back to the queue
+                    queue.addAll(mustWait)
                 }
             }
         }
@@ -162,6 +150,8 @@ class HoldingQueue(private val context: Context, private val workManager: WorkMa
             Log.i(BDPlugin.TAG, "Canceled task with id ${it.task.taskId}")
         }
         removedTaskIds = toRemove.map { it.task.taskId }.toMutableList()
+        enqueuedTaskIds.removeAll(removedTaskIds.toSet())
+        removedTaskIds.forEach { hostByTaskId.remove(it) }
         return removedTaskIds
     }
 

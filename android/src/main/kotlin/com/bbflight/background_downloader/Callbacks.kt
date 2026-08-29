@@ -53,6 +53,7 @@ class Callbacks {
                                     TAG,
                                     "getMethodChannel without registered callbackDispatcherRawHandle"
                                 )
+                                methodChannelCompleter.complete(null)
                                 return@post
                             }
                             val flutterEngine = FlutterEngine(context, null, false)
@@ -63,6 +64,7 @@ class Callbacks {
                                     TAG,
                                     "invokeOnStartCallback failed to find callbackDispatcher"
                                 )
+                                methodChannelCompleter.complete(null)
                                 return@post
                             }
                             val appBundlePath: String =

@@ -15,7 +15,8 @@ import kotlinx.serialization.json.Json
 
 class UIDTJobService : JobService() {
 
-    private val jobs = java.util.concurrent.ConcurrentHashMap<Int, Job>()
+    val jobs = java.util.concurrent.ConcurrentHashMap<Int, Job>()
+    val jobContexts = java.util.concurrent.ConcurrentHashMap<Int, UIDTJobContext>()
 
     override fun onStartJob(params: JobParameters?): Boolean {
         Log.d(TaskRunner.TAG, "Starting UIDT JobService")
@@ -55,11 +56,16 @@ class UIDTJobService : JobService() {
             }
         }
 
+        jobContexts[params.jobId] = jobContext
         val job = CoroutineScope(Dispatchers.IO).launch {
-            runner.run()
-            Log.d(TaskRunner.TAG, "UIDT JobService finished for taskId ${jobContext.task.taskId}")
-            jobs.remove(params.jobId)
-            jobFinished(params, false) // Needs reschedule? usually false for these tasks as we manage retries internally
+            try {
+                runner.run()
+                Log.d(TaskRunner.TAG, "UIDT JobService finished for taskId ${jobContext.task.taskId}")
+            } finally {
+                jobs.remove(params.jobId)
+                jobContexts.remove(params.jobId)
+                jobFinished(params, false) // retries managed internally
+            }
         }
         jobs[params.jobId] = job
 
@@ -69,9 +75,11 @@ class UIDTJobService : JobService() {
     override fun onStopJob(params: JobParameters?): Boolean {
         Log.i(TaskRunner.TAG, "Stopping UIDT JobService")
         if (params != null) {
+            jobContexts[params.jobId]?.isStopped = true
             jobs.remove(params.jobId)?.cancel()
+            jobContexts.remove(params.jobId)
         }
-        return true // Reschedule? If system stopped it, maybe we want to retry?
+        return false // Do not reschedule automatically; background_downloader manages retries internally
     }
 
     /**
@@ -88,22 +96,17 @@ class UIDTJobService : JobService() {
         override var notificationConfigJsonString: String? = null
         override var runInForeground: Boolean = true // UIDT always runs in foreground service
 
+        @Volatile
+        var isStopped: Boolean = false
+
         override val appContext: Context
             get() = service.applicationContext
 
         override val isTaskStopped: Boolean
-            get() = !isActive // Simple check if job is active
+            get() = isStopped || !isActive
 
         override val isActive: Boolean
-            get() {
-                 // ideally we check if the specific job is still active, but we don't have easy access
-                 // to the job object here without circular dependency or passing it in later.
-                 // However, onStopJob cancels the coroutine, so the check in TaskRunner via isActive
-                 // (CoroutineScope) should handle it.
-                 // TaskJobContext.isActive is used for some checks.
-                 // For now, return true, relying on coroutine cancellation to stop the runner's loop.
-                 return true
-            }
+            get() = !isStopped && ((service as? UIDTJobService)?.jobs?.get(params.jobId)?.isActive ?: true)
 
 
         override fun getInputLong(key: String, defaultValue: Long): Long {
@@ -120,7 +123,12 @@ class UIDTJobService : JobService() {
             notificationType: Int
         ) {
             if (Build.VERSION.SDK_INT >= 34) {
-                service.setNotification(params, notificationId, notification, notificationType)
+                service.setNotification(
+                    params,
+                    notificationId,
+                    notification,
+                    JobService.JOB_END_NOTIFICATION_POLICY_DETACH
+                )
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 service.startForeground(notificationId, notification, notificationType)
             } else {

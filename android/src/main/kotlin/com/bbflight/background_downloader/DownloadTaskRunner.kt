@@ -271,11 +271,18 @@ class DownloadTaskRunner(context: TaskJobContext) : TaskRunner(context) {
                         }
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             withContext(Dispatchers.IO) {
-                                Files.move(
-                                    tempFile.toPath(),
-                                    destFile.toPath(),
-                                    StandardCopyOption.REPLACE_EXISTING
-                                )
+                                try {
+                                    Files.move(
+                                        tempFile.toPath(),
+                                        destFile.toPath(),
+                                        StandardCopyOption.REPLACE_EXISTING
+                                    )
+                                } catch (e: java.nio.file.FileSystemException) {
+                                    // Fallback if moving across different filesystems/mount points (EXDEV / Cross-device link)
+                                    Log.d(TAG, "Files.move failed ($e), falling back to copyTo + delete")
+                                    tempFile.copyTo(destFile, overwrite = true)
+                                    deleteTempFile()
+                                }
                             }
                             setFileOwnership(destFile)
                         } else {

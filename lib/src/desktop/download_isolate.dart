@@ -262,7 +262,7 @@ Future<TaskStatus> processOkDownloadResponse(
       } catch (_) {}
       if (resultStatus == TaskStatus.failed &&
           serverAcceptsRanges &&
-          bytesTotal + startByte > 1 << 20) {
+          (bytesTotal + startByte > 1 << 20 || isResume)) {
         // send ResumeData to allow resume after fail
         sendPort.send((
           'resumeData',
