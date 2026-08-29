@@ -262,7 +262,7 @@ Future<TaskStatus> processOkDownloadResponse(
       } catch (_) {}
       if (resultStatus == TaskStatus.failed &&
           serverAcceptsRanges &&
-          bytesTotal + startByte > 1 << 20) {
+          (bytesTotal + startByte > 1 << 20 || isResume)) {
         // send ResumeData to allow resume after fail
         sendPort.send((
           'resumeData',
@@ -270,10 +270,7 @@ Future<TaskStatus> processOkDownloadResponse(
           bytesTotal + startByte,
           eTagHeader,
         ));
-      } else if (resultStatus != TaskStatus.paused &&
-          !(isResume &&
-              serverAcceptsRanges &&
-              File(actualTempFilePath).existsSync())) {
+      } else if (resultStatus != TaskStatus.paused) {
         File(actualTempFilePath).deleteSync();
       }
     } catch (e) {
