@@ -6,6 +6,7 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:background_downloader/src/base_downloader.dart';
 import 'package:background_downloader/src/chunk.dart';
 import 'package:background_downloader/src/desktop/parallel_download_isolate.dart';
+import 'package:background_downloader/src/temp_file_cleanup.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const urlWithContentLength =
@@ -43,7 +44,10 @@ void main() {
     expect(chunks.length, equals(1));
     var chunk = chunks.first;
     expect(chunk.url, equals(task.url));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(0));
     expect(chunk.toByte, equals(99));
     // one url, three chunks
@@ -55,7 +59,10 @@ void main() {
     expect(chunks.length, equals(3));
     chunk = chunks.first;
     expect(chunk.url, equals(task.url));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(0));
     expect(chunk.toByte, equals(33));
     expect(chunk.parentTaskId, equals(task.taskId));
@@ -66,12 +73,18 @@ void main() {
     expect(chunk.task.group, equals(BaseDownloader.chunkGroup));
     chunk = chunks[1];
     expect(chunk.url, equals(task.url));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(34));
     expect(chunk.toByte, equals(67));
     chunk = chunks[2];
     expect(chunk.url, equals(task.url));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(68));
     expect(chunk.toByte, equals(99));
     // two urls, two chunks
@@ -86,22 +99,34 @@ void main() {
     expect(chunks.length, equals(4));
     chunk = chunks.first;
     expect(chunk.url, equals(task.urls.first));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(0));
     expect(chunk.toByte, equals(24));
     chunk = chunks[1];
     expect(chunk.url, equals(task.urls.last));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(25));
     expect(chunk.toByte, equals(49));
     chunk = chunks[2];
     expect(chunk.url, equals(task.urls.first));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(50));
     expect(chunk.toByte, equals(74));
     chunk = chunks[3];
     expect(chunk.url, equals(task.urls.last));
-    expect(chunk.filename.isNotEmpty, isTrue);
+    expect(
+      chunk.filename.startsWith(backgroundDownloaderTempFilePrefix),
+      isTrue,
+    );
     expect(chunk.fromByte, equals(75));
     expect(chunk.toByte, equals(99));
   });

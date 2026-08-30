@@ -166,7 +166,7 @@ public class ParallelDownloader: NSObject {
             chunksList.append(Chunk(
                 parentTask: task,
                 url: task.urls![i % task.urls!.count],
-                filename: "\(Int.random(in: 1..<1 << 32))",
+                filename: "\(backgroundDownloaderTempFilePrefix).\(Int.random(in: 1..<1 << 32))",
                 fromByte: Int64(i) * chunkSize,
                 toByte: min(Int64(i) * chunkSize + chunkSize - 1, contentLength - 1)))
         }

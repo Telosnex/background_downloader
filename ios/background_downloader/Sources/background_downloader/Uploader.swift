@@ -34,7 +34,7 @@ public class Uploader : NSObject, URLSessionTaskDelegate, StreamDelegate {
     /// Initialize an Uploader for this Task
     init(task: Task) {
         self.task = task
-        outputFilename = NSUUID().uuidString
+        outputFilename = "\(backgroundDownloaderTempFilePrefix).\(NSUUID().uuidString)"
     }
     
     
