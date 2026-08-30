@@ -10,6 +10,8 @@ import UIKit
 import UniformTypeIdentifiers
 import os.log
 
+let backgroundDownloaderTempFilePrefix = "com.bbflight.background_downloader"
+
 extension URL {
     /// Uses .appending for iOS 16 and up, and .appendingPathComponent
     /// for earlier versions
@@ -63,7 +65,7 @@ func lowerCasedStringStringMap(_ map: [AnyHashable: Any]?) -> [String: String]? 
 func createTempFileWithRange(from fileURL: URL, start: UInt64, contentLength: UInt64) -> URL? {
     let fileManager = FileManager.default
     let tempDir = fileManager.temporaryDirectory
-    let tempFileURL = tempDir.appendingPathComponent(UUID().uuidString) // Create a unique temporary file
+    let tempFileURL = tempDir.appendingPathComponent("\(backgroundDownloaderTempFilePrefix).\(UUID().uuidString)")
     
     // Create the temporary file
     fileManager.createFile(atPath: tempFileURL.path, contents: nil, attributes: nil)

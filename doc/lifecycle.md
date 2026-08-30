@@ -38,6 +38,26 @@ void downloadStatusCallback(TaskStatusUpdate update) async {
   }
 ```
 
+## Destructively cleaning temporary transfer files
+
+Applications that intentionally never restore transfers across launches can explicitly purge resumable state and legacy temporary files:
+
+```dart
+await FileDownloader().cleanUpTempFiles();
+```
+
+This operation is intentionally destructive. It makes a best-effort attempt to cancel every known task, permanently removes all paused and resume data, deletes files referenced by that data, and scans known staging directories for current and legacy `com.bbflight.background_downloader...` filenames. It is never called automatically by `start()`.
+
+Old plugin releases did not durably record ownership of every temporary file. The legacy filename scan can therefore delete an unrelated or completed file with the same name. Do not call cleanup while any application code, isolate, notification action, or native worker may enqueue or resume a task. Applications using a custom staging directory must pass it explicitly:
+
+```dart
+await FileDownloader().cleanUpTempFiles(
+  additionalDirectories: ['/path/to/custom/staging'],
+);
+```
+
+Directories are scanned only at their top level. Bare integer and UUID filenames produced by some old parallel-download and iOS upload implementations are not scanned heuristically because they cannot be distinguished from unrelated files. They are removed only when surviving resume metadata identifies their exact paths.
+
 ## Grouping tasks
 
 Because an app may require different types of downloads, and handle those differently, you can specify a `group` with your task, and register callbacks specific to each `group`. If no group is specified the default group `FileDownloader.defaultGroup` is used. For example, to create and handle downloads for group 'bigFiles':

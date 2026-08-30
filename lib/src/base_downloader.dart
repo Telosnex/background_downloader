@@ -6,6 +6,8 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'chunk.dart';
 import 'database.dart';
@@ -17,6 +19,7 @@ import 'permissions.dart';
 import 'persistent_storage.dart';
 import 'queue/task_queue.dart';
 import 'task.dart';
+import 'temp_file_cleanup.dart';
 import 'web_downloader.dart'
     if (dart.library.io) 'desktop/desktop_downloader.dart';
 
@@ -444,6 +447,163 @@ abstract base class BaseDownloader {
       pausedTasks.where((task) => allGroups ? true : task.group == group),
     );
     return tasks;
+  }
+
+  /// Destructively removes temporary transfer files and resumable state.
+  ///
+  /// This is a legacy cleanup tool for applications that intentionally never
+  /// restore transfers across launches. It makes a best-effort attempt to
+  /// cancel every known task, removes all paused and resume metadata, deletes
+  /// files referenced by that metadata, and scans known staging directories
+  /// for current and legacy temporary-file names.
+  ///
+  /// WARNING: Old releases did not durably track temporary-file ownership.
+  /// Filename scanning is therefore heuristic and can delete an unrelated or
+  /// completed file with the same name. Do not call this while any code,
+  /// isolate, notification action, or native worker may enqueue or resume a
+  /// task. [additionalDirectories] are scanned with the same destructive
+  /// filename heuristic and are not traversed recursively.
+  ///
+  /// Returns the number of files deleted directly by this cleanup. Files that
+  /// task cancellation already removed may not be included in the count.
+  Future<int> cleanUpTempFiles({
+    Iterable<String> additionalDirectories = const [],
+  }) async {
+    if (kIsWeb) {
+      return 0;
+    }
+    await ready;
+    await retrieveLocallyStoredData();
+
+    final resumeData = await _storage.retrieveAllResumeData();
+    final referencedPaths = await _pathsReferencedByResumeData(resumeData);
+    final taskIds = resumeData.map((data) => data.taskId).toSet();
+    try {
+      final tasks = await allTasks(FileDownloader.defaultGroup, true, true);
+      taskIds.addAll(tasks.map((task) => task.taskId));
+    } on Object catch (error) {
+      log.warning('Could not enumerate every task during cleanup: $error');
+    }
+
+    if (taskIds.isNotEmpty) {
+      try {
+        await cancelTasksWithIds(taskIds);
+      } on Object catch (error) {
+        log.warning('Could not cancel every task during cleanup: $error');
+      }
+      // A task can be represented by paused Dart metadata and still have a
+      // native entry with the same ID. The normal cancellation path excludes
+      // paused IDs from its native call, so repeat all IDs directly here.
+      try {
+        await cancelPlatformTasksWithIds(taskIds.toList(growable: false));
+      } on Object catch (error) {
+        log.warning(
+          'Could not cancel every native task during cleanup: $error',
+        );
+      }
+    }
+
+    var deletedCount = await _deleteFilesAtPaths(referencedPaths);
+    await removeResumeData();
+    await removePausedTask();
+    canResumeTask.clear();
+
+    final directories = await _backgroundDownloaderTempDirectories();
+    directories.addAll(additionalDirectories);
+    deletedCount += await deleteBackgroundDownloaderTempFiles(directories);
+    return deletedCount;
+  }
+
+  Future<Set<String>> _pathsReferencedByResumeData(
+    Iterable<ResumeData> allResumeData,
+  ) async {
+    final paths = <String>{};
+    for (final resumeData in allResumeData) {
+      final task = resumeData.task;
+      if (task is! ParallelDownloadTask) {
+        // On iOS the data is opaque URLSession resume data, not a file path.
+        if (!Platform.isIOS) {
+          paths.add(resumeData.tempFilepath);
+        }
+        continue;
+      }
+      try {
+        final chunks = List<Chunk>.from(
+          jsonDecode(resumeData.data, reviver: Chunk.listReviver),
+        );
+        for (final chunk in chunks) {
+          paths.add(await chunk.task.filePath());
+          if (!Platform.isIOS) {
+            final chunkResumeData = await getResumeData(chunk.task.taskId);
+            if (chunkResumeData != null) {
+              paths.add(chunkResumeData.tempFilepath);
+            }
+          }
+        }
+      } on Object catch (error) {
+        // This operation is intentionally destructive: unusable metadata is
+        // discarded even when it cannot identify every old chunk file.
+        log.warning(
+          'Could not decode parallel resume data during cleanup: $error',
+        );
+      }
+    }
+    return paths;
+  }
+
+  Future<int> _deleteFilesAtPaths(Iterable<String> paths) async {
+    var deletedCount = 0;
+    for (final filePath in paths.toSet()) {
+      try {
+        if (FileSystemEntity.typeSync(filePath, followLinks: false) ==
+            FileSystemEntityType.file) {
+          await File(filePath).delete();
+          deletedCount++;
+        }
+      } on FileSystemException catch (error) {
+        log.fine('Could not delete temporary file $filePath: $error');
+      }
+    }
+    return deletedCount;
+  }
+
+  Future<Set<String>> _backgroundDownloaderTempDirectories() async {
+    final directories = <String>{};
+
+    Future<void> addDirectory(Future<Directory> directoryFuture) async {
+      try {
+        directories.add((await directoryFuture).path);
+      } on Object catch (error) {
+        log.fine('Could not resolve a cleanup directory: $error');
+      }
+    }
+
+    await addDirectory(getTemporaryDirectory());
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android has historically staged regular downloads in cache or support
+      // and native parallel chunks in application documents.
+      await addDirectory(getApplicationCacheDirectory());
+      await addDirectory(getApplicationSupportDirectory());
+      await addDirectory(getApplicationDocumentsDirectory());
+      try {
+        for (final directory in await getExternalCacheDirectories() ?? []) {
+          directories.add(directory.path);
+        }
+      } on Object catch (error) {
+        log.fine('Could not resolve external cache directories: $error');
+      }
+      try {
+        for (final directory in await getExternalStorageDirectories() ?? []) {
+          directories
+            ..add(directory.path)
+            ..add(p.join(directory.path, 'Support'));
+        }
+      } on Object catch (error) {
+        log.fine('Could not resolve external storage directories: $error');
+      }
+    }
+    return directories;
   }
 
   /// Cancels ongoing tasks whose taskId is in the list provided with this call

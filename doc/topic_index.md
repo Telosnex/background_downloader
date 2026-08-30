@@ -17,7 +17,7 @@ Use this index to find documentation for specific topics and keywords.
 *   **Cancel**: [Lifecycle](lifecycle.md#canceling-pausing-and-resuming-tasks) - canceling tasks
 *   **Callbacks**: [Database & Monitoring](database.md#using-callbacks) - using callbacks for status updates
 *   **Central monitoring**: [Database & Monitoring](database.md) - monitoring all tasks in one place
-*   **Cleanup**: [Database & Monitoring](database.md#automated-database-cleanup) - managing database size
+*   **Cleanup**: [Lifecycle](lifecycle.md#destructively-cleaning-temporary-transfer-files) - destructive legacy temporary-file cleanup; [Database & Monitoring](database.md#automated-database-cleanup) - managing database size
 *   **Configuration**: [Configuration](CONFIG.md) - global settings
 *   **Content-Disposition**: [Downloads](downloads.md#server-suggested-filenames) - using server suggested filenames
 *   **Content URI**: [URIs](URI.md#android) - working with Android content providers

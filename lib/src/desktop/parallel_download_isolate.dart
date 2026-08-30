@@ -10,6 +10,7 @@ import '../chunk.dart';
 import '../exceptions.dart';
 import '../models.dart';
 import '../task.dart';
+import '../temp_file_cleanup.dart';
 import '../utils.dart';
 import 'desktop_downloader.dart';
 import 'download_isolate.dart';
@@ -441,7 +442,8 @@ List<Chunk> createChunks(
         Chunk(
           parentTask: task,
           url: task.urls[i % task.urls.length],
-          filename: Random().nextInt(1 << 32).toString(),
+          filename:
+              '$backgroundDownloaderTempFilePrefix.${Random().nextInt(1 << 32)}',
           fromByte: i * chunkSize,
           toByte: min(i * chunkSize + chunkSize - 1, contentLength - 1),
         ),

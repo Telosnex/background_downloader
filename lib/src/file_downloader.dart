@@ -458,6 +458,28 @@ interface class FileDownloader {
   /// is used, which is the group used when you [enqueue] a task
   Future<int> reset({String group = defaultGroup}) => _downloader.reset(group);
 
+  /// Destructively removes temporary transfer files and resumable state.
+  ///
+  /// This is an explicit legacy cleanup tool for applications that never
+  /// restore transfers across launches. It makes a best-effort attempt to
+  /// cancel every known task, permanently removes all paused and resume data,
+  /// deletes files referenced by that data, and scans known staging
+  /// directories for current and legacy temporary-file names.
+  ///
+  /// WARNING: Legacy temporary-file ownership was not durably tracked, so the
+  /// filename scan can delete an unrelated or completed file with the same
+  /// name. Do not call this while anything may enqueue or resume a task. Paths
+  /// in [additionalDirectories] are scanned with the same destructive
+  /// heuristic. This method is never called automatically by [start].
+  ///
+  /// Returns the number of files deleted directly by cleanup. Files removed as
+  /// a side effect of task cancellation may not be included in the count.
+  Future<int> cleanUpTempFiles({
+    Iterable<String> additionalDirectories = const [],
+  }) => _downloader.cleanUpTempFiles(
+    additionalDirectories: additionalDirectories,
+  );
+
   /// Returns a list of taskIds of all tasks currently active in this [group]
   ///
   /// Active means enqueued or running, and if [includeTasksWaitingToRetry] is

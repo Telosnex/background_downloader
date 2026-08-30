@@ -1,5 +1,8 @@
 ## 9.5.9
 
+* Add explicit, destructive `FileDownloader.cleanUpTempFiles()` maintenance for applications that never restore transfers across launches
+* Prefix newly created iOS and desktop temporary chunk/upload files so future interrupted-transfer files can be identified by legacy cleanup
+
 * Add `Config.mTLS` and `MTLSConfig` data class to support mutual TLS client authentication on desktop platforms (closes #711)
 * Add `Config.tempFilePath` to allow configuring a custom temporary directory path for downloads (closes #712)
 * Reduce default task timeout for expedited tasks to 2 minutes
