@@ -510,7 +510,7 @@ class _LocalStorePersistentStorageExecutor {
       case 0:
         // move files from docDir to supportDir
         final docDir = await getApplicationDocumentsDirectory();
-        final supportDir = await getApplicationSupportDirectory();
+        final supportDir = await Localstore.instance.databaseDirectory;
         await Future.wait(
           [resumeDataPath, pausedTasksPath, taskRecordsPath].map((path) async {
             try {
@@ -664,7 +664,7 @@ class BasePersistentStorageMigrator implements PersistentStorageMigrator {
     final localStore = LocalStorePersistentStorage();
     if (await migrateFromPersistentStorage(localStore, toStorage)) {
       // delete all paths related to LocalStore
-      final supportDir = await getApplicationSupportDirectory();
+      final supportDir = await Localstore.instance.databaseDirectory;
       await Future.wait(
         [
           _LocalStorePersistentStorageExecutor.resumeDataPath,
