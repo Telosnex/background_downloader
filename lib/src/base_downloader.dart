@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'chunk.dart';
+import 'connectivity_watch.dart';
 import 'database.dart';
 import 'exceptions.dart';
 import 'file_downloader.dart';
@@ -145,7 +146,7 @@ abstract base class BaseDownloader {
   }
 
   final Connectivity _connectivity = Connectivity();
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Future<StreamSubscription<List<ConnectivityResult>>?>? _connectivityWatch;
 
   /// Whether the device currently has an active network connection
   bool isConnected = true;
@@ -177,28 +178,27 @@ abstract base class BaseDownloader {
   }
 
   void _initConnectivity() {
-    try {
-      _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
-        results,
-      ) {
+    _connectivityWatch = watchConnectivity(
+      check: _connectivity.checkConnectivity,
+      changes: () => _connectivity.onConnectivityChanged,
+      onResults: (results) {
         final connected = results.any((r) => r != ConnectivityResult.none);
         final wifi = results.any(
           (r) =>
               r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet,
         );
         _onConnectivityChanged(connected, wifi);
-      });
-      _connectivity.checkConnectivity().then((results) {
-        final connected = results.any((r) => r != ConnectivityResult.none);
-        final wifi = results.any(
-          (r) =>
-              r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet,
+      },
+      onUnavailable: (e) {
+        // For example, Linux without NetworkManager. Downloads still run, but
+        // do not wait for the network or for Wi-Fi.
+        log.warning(
+          'Connectivity is not available, so the device is assumed to be '
+          'connected to Wi-Fi: $e',
         );
-        _onConnectivityChanged(connected, wifi);
-      });
-    } catch (e) {
-      log.finer('Connectivity initialization error: $e');
-    }
+        _onConnectivityChanged(true, true);
+      },
+    );
   }
 
   void _onConnectivityChanged(bool connected, bool wifi) {
@@ -1394,7 +1394,7 @@ abstract base class BaseDownloader {
   /// messages or status updates
   @mustCallSuper
   void destroy() {
-    _connectivitySubscription?.cancel();
+    unawaited(_connectivityWatch?.then((s) => s?.cancel()));
     tasksWaitingToRetry.clear();
     _batches.clear();
     awaitTasks.clear();
