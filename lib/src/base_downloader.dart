@@ -178,24 +178,32 @@ abstract base class BaseDownloader {
 
   void _initConnectivity() {
     try {
-      _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
-        results,
-      ) {
-        final connected = results.any((r) => r != ConnectivityResult.none);
-        final wifi = results.any(
-          (r) =>
-              r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet,
-        );
-        _onConnectivityChanged(connected, wifi);
-      });
-      _connectivity.checkConnectivity().then((results) {
-        final connected = results.any((r) => r != ConnectivityResult.none);
-        final wifi = results.any(
-          (r) =>
-              r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet,
-        );
-        _onConnectivityChanged(connected, wifi);
-      });
+      _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+        (results) {
+          final connected = results.any((r) => r != ConnectivityResult.none);
+          final wifi = results.any(
+            (r) =>
+                r == ConnectivityResult.wifi ||
+                r == ConnectivityResult.ethernet,
+          );
+          _onConnectivityChanged(connected, wifi);
+        },
+        // Without a connectivity service (Linux without NetworkManager) the
+        // stream and the check fail: that must not be an unhandled error.
+        onError: (Object e) => log.finer('Connectivity listen error: $e'),
+      );
+      _connectivity
+          .checkConnectivity()
+          .then((results) {
+            final connected = results.any((r) => r != ConnectivityResult.none);
+            final wifi = results.any(
+              (r) =>
+                  r == ConnectivityResult.wifi ||
+                  r == ConnectivityResult.ethernet,
+            );
+            _onConnectivityChanged(connected, wifi);
+          })
+          .catchError((Object e) => log.finer('Connectivity check error: $e'));
     } catch (e) {
       log.finer('Connectivity initialization error: $e');
     }

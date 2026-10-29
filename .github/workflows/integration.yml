@@ -41,8 +41,12 @@ jobs:
       - name: Start the download server
         working-directory: example
         run: |
-          dart run tool/download_server.dart > "$RUNNER_TEMP/download_server.log" 2>&1 &
-          curl --fail --silent --show-error -o /dev/null --retry 20 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin
+          # Compiled first: started with dart run, the server took more than
+          # the readiness check's wait on the iOS runner.
+          dart compile exe tool/download_server.dart -o "$RUNNER_TEMP/download_server.exe"
+          "$RUNNER_TEMP/download_server.exe" > "$RUNNER_TEMP/download_server.log" 2>&1 &
+          curl --fail --silent --show-error -o /dev/null --retry 60 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin \
+            || { cat "$RUNNER_TEMP/download_server.log"; exit 1; }
       - name: Download test
         working-directory: example
         run: flutter test integration_test/download_test.dart -d "$DEVICE" -r expanded
@@ -65,8 +69,12 @@ jobs:
       - name: Start the download server
         working-directory: example
         run: |
-          dart run tool/download_server.dart > "$RUNNER_TEMP/download_server.log" 2>&1 &
-          curl --fail --silent --show-error -o /dev/null --retry 20 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin
+          # Compiled first: started with dart run, the server took more than
+          # the readiness check's wait on the iOS runner.
+          dart compile exe tool/download_server.dart -o "$RUNNER_TEMP/download_server.exe"
+          "$RUNNER_TEMP/download_server.exe" > "$RUNNER_TEMP/download_server.log" 2>&1 &
+          curl --fail --silent --show-error -o /dev/null --retry 60 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin \
+            || { cat "$RUNNER_TEMP/download_server.log"; exit 1; }
       - name: Download test
         working-directory: example
         run: xvfb-run -a flutter test integration_test/download_test.dart -d linux -r expanded
@@ -95,8 +103,12 @@ jobs:
       - name: Start the download server
         working-directory: example
         run: |
-          dart run tool/download_server.dart > "$RUNNER_TEMP/download_server.log" 2>&1 &
-          curl --fail --silent --show-error -o /dev/null --retry 20 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin
+          # Compiled first: started with dart run, the server took more than
+          # the readiness check's wait on the iOS runner.
+          dart compile exe tool/download_server.dart -o "$RUNNER_TEMP/download_server.exe"
+          "$RUNNER_TEMP/download_server.exe" > "$RUNNER_TEMP/download_server.log" 2>&1 &
+          curl --fail --silent --show-error -o /dev/null --retry 60 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin \
+            || { cat "$RUNNER_TEMP/download_server.log"; exit 1; }
       - uses: Telosnex/telosnex_ci_tools/actions/ios-flutter-test@cba77fc0d4330f1bef81193c53cd7dd976f0ebcf # v0.5.3
         with:
           target: integration_test/download_test.dart
@@ -119,8 +131,12 @@ jobs:
       - name: Start the download server
         working-directory: example
         run: |
-          dart run tool/download_server.dart > "$RUNNER_TEMP/download_server.log" 2>&1 &
-          curl --fail --silent --show-error -o /dev/null --retry 20 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin
+          # Compiled first: started with dart run, the server took more than
+          # the readiness check's wait on the iOS runner.
+          dart compile exe tool/download_server.dart -o "$RUNNER_TEMP/download_server.exe"
+          "$RUNNER_TEMP/download_server.exe" > "$RUNNER_TEMP/download_server.log" 2>&1 &
+          curl --fail --silent --show-error -o /dev/null --retry 60 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin \
+            || { cat "$RUNNER_TEMP/download_server.log"; exit 1; }
       - name: Download test
         working-directory: example
         run: flutter test integration_test/download_test.dart -d "${{ steps.emulator.outputs.serial }}" -r expanded
