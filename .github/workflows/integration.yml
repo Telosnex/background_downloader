@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
       - run: flutter pub get
         working-directory: example
       - name: Start the download server
@@ -80,7 +80,7 @@ jobs:
           sudo mkdir -p /run/dbus
           sudo dbus-daemon --system --fork
           sudo NetworkManager
-      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
       - run: flutter pub get
         working-directory: example
       - name: Start the download server
@@ -119,7 +119,7 @@ jobs:
           # access. connectivity_plus cannot reach NetworkManager here.
           sudo mkdir -p /run/dbus
           sudo dbus-daemon --system --fork
-      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
       - run: flutter pub get
         working-directory: example
       - name: Start the download server
@@ -157,10 +157,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
       - run: flutter pub get
         working-directory: example
-      - uses: Telosnex/telosnex_ci_tools/actions/ios-simulator-boot@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/ios-simulator-boot@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
         id: simulator
       - name: Start the download server
         working-directory: example
@@ -171,7 +171,7 @@ jobs:
           "$RUNNER_TEMP/download_server.exe" > "$RUNNER_TEMP/download_server.log" 2>&1 &
           curl --fail --silent --show-error -o /dev/null --retry 60 --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/files/1MB-test.bin \
             || { cat "$RUNNER_TEMP/download_server.log"; exit 1; }
-      - uses: Telosnex/telosnex_ci_tools/actions/ios-flutter-test@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/ios-flutter-test@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
         with:
           target: integration_test/download_test.dart
           working-directory: example
@@ -185,10 +185,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/setup-flutter@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
       - run: flutter pub get
         working-directory: example
-      - uses: Telosnex/telosnex_ci_tools/actions/android-emulator@4a798518378fb0c362ebe42940227560e6b4ecde # v0.5.8
+      - uses: Telosnex/telosnex_ci_tools/actions/android-emulator@46806695c593ec632eb26996046ea89649a1a6f7 # v0.5.9
         id: emulator
       - name: Start the download server
         working-directory: example
