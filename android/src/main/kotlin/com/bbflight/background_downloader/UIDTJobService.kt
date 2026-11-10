@@ -65,6 +65,7 @@ class UIDTJobService : JobService() {
                 jobs.remove(params.jobId)
                 jobContexts.remove(params.jobId)
                 jobFinished(params, false) // retries managed internally
+                NotificationService.onUIDTJobFinished(jobContext)
             }
         }
         jobs[params.jobId] = job
@@ -94,7 +95,10 @@ class UIDTJobService : JobService() {
         override var networkSpeed: Double = -1.0
         override var taskCanResume: Boolean = false
         override var notificationConfigJsonString: String? = null
-        override var runInForeground: Boolean = true // UIDT always runs in foreground service
+        override val runId: String? = null
+        override var runInForeground: Boolean
+            get() = true
+            set(_) {} // UIDT always runs in foreground service
 
         @Volatile
         var isStopped: Boolean = false
