@@ -9,10 +9,13 @@ import androidx.preference.PreferenceManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -33,9 +36,11 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.URLDecoder
 import java.net.MalformedURLException
+import java.util.UUID
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import androidx.core.content.edit
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 
 
@@ -54,6 +59,7 @@ interface TaskJobContext {
     var taskCanResume: Boolean
     var notificationConfigJsonString: String?
     val isTaskStopped: Boolean
+    val runId: String? // the WorkManager request id, or null where runs can't be told apart
 
     // Foreground control
     var runInForeground: Boolean
@@ -127,9 +133,13 @@ open class TaskRunner(
          * [arg] can be single variable or a MutableList
          */
         suspend fun postOnBackgroundChannel(
-            method: String, task: Task, arg: Any, onFail: (suspend () -> Unit)? = null
+            method: String,
+            task: Task,
+            arg: Any,
+            onFail: (suspend () -> Unit)? = null,
+            onSuccess: (suspend () -> Unit)? = null
         ) {
-            val bgPost = BackgroundPost(task, method, arg, onFail)
+            val bgPost = BackgroundPost(task, method, arg, onFail, onSuccess)
             QueueService.postOnBackgroundChannel(bgPost)
         }
 
@@ -155,8 +165,12 @@ open class TaskRunner(
             context: Context
         ) {
             // Intercept status updates resulting from re-enqueue request, which
-            // themselves are triggered by a change in WiFi requirement
-            if (BDPlugin.tasksToReEnqueue.remove(task)) {
+            // themselves are triggered by a change in WiFi requirement. Only an update that ends
+            // a run counts: a task collected while enqueued can start before its cancel, and its
+            // running update must leave the entry for the cancel's update
+            if ((status.isFinalState() || status == TaskStatus.paused) &&
+                BDPlugin.tasksToReEnqueue.remove(task)
+            ) {
                 if (status == TaskStatus.paused || status == TaskStatus.canceled || status == TaskStatus.failed) {
                     WiFi.reEnqueue(
                         EnqueueItem(
@@ -171,6 +185,28 @@ open class TaskRunner(
                     WiFi.reEnqueue(null) // signal end of batch
                 }
                 if (status == TaskStatus.paused || status == TaskStatus.canceled || status == TaskStatus.failed) {
+                    // the task gives up its slot and waits in the holding queue for a new one.
+                    // Posted directly, as a normal update for a canceled task becomes canceled
+                    if (BDPlugin.holdingQueue != null && task.providesStatusUpdates()) {
+                        val enqueuedUpdate = TaskStatusUpdate(
+                            task = task,
+                            taskStatus = TaskStatus.enqueued,
+                            exception = null,
+                            responseBody = null,
+                            responseStatusCode = null,
+                            responseHeaders = null,
+                            mimeType = null,
+                            charSet = null
+                        )
+                        postOnBackgroundChannel("statusUpdate", task, enqueuedUpdate.argList, onFail = {
+                            storeLocally(
+                                BDPlugin.keyStatusUpdateMap,
+                                task.taskId,
+                                bdJson.encodeToString<TaskStatusUpdate>(enqueuedUpdate),
+                                prefs
+                            )
+                        })
+                    }
                     return
                 }
             }
@@ -246,17 +282,43 @@ open class TaskRunner(
 
             // Post update if task expects one, or if failed and retry is needed
             if (canSendStatusUpdate && (task.providesStatusUpdates() || retryNeeded)) {
-                val arg = taskStatusUpdate.argList
-                postOnBackgroundChannel("statusUpdate", task, arg, onFail = {
-                    // unsuccessful post, so store in local prefs
-                    Log.d(TAG, "Could not post status update -> storing locally")
+                val statusUpdateJson = bdJson.encodeToString<TaskStatusUpdate>(taskStatusUpdate)
+                if (modifiedStatus.isFinalState()) {
+                    // Store final status locally before removing task from keyTasksMap so that if
+                    // the process dies before Dart persists the update, resumeFromBackground will
+                    // replay it instead of rescheduleKilledTasks re-enqueuing a finished task
                     storeLocally(
                         BDPlugin.keyStatusUpdateMap,
                         task.taskId,
-                        bdJson.encodeToString<TaskStatusUpdate>(taskStatusUpdate),
+                        statusUpdateJson,
                         prefs
                     )
-                })
+                }
+                val arg = taskStatusUpdate.argList
+                postOnBackgroundChannel(
+                    "statusUpdate",
+                    task,
+                    arg,
+                    onFail = {
+                        // unsuccessful post, so store in local prefs
+                        Log.d(TAG, "Could not post status update -> storing locally")
+                        storeLocally(
+                            BDPlugin.keyStatusUpdateMap,
+                            task.taskId,
+                            statusUpdateJson,
+                            prefs
+                        )
+                    },
+                    onSuccess = if (modifiedStatus.isFinalState()) {
+                        {
+                            removeLocally(
+                                BDPlugin.keyStatusUpdateMap,
+                                task.taskId,
+                                prefs
+                            )
+                        }
+                    } else null
+                )
             }
             // if task is in final state, cancel the WorkManager job (if failed),
             // remove task from persistent storage, clean up references to taskId
@@ -401,6 +463,27 @@ open class TaskRunner(
             }
         }
 
+        /**
+         * Remove the entry for [taskId] from preferences under [prefsKey]
+         */
+        private fun removeLocally(
+            prefsKey: String,
+            taskId: String,
+            prefs: SharedPreferences
+        ) {
+            BDPlugin.prefsLock.write {
+                val jsonString = prefs.getString(prefsKey, "{}") as String
+                val mapByTaskId = bdJson.decodeFromString<MutableMap<String, String>>(jsonString)
+                if (mapByTaskId.remove(taskId) != null) {
+                    prefs.edit {
+                        putString(
+                            prefsKey, bdJson.encodeToString<MutableMap<String, String>>(mapByTaskId)
+                        )
+                    }
+                }
+            }
+        }
+
     }
 
     var task: Task
@@ -492,7 +575,9 @@ open class TaskRunner(
                         responseStatusCode = statusUpdate.responseStatusCode,
                         context = context.appContext
                     )
-                    BDPlugin.holdingQueue?.taskFinished(task)
+                    if (!slotReleasedByCancel()) {
+                        BDPlugin.holdingQueue?.taskFinished(task)
+                    }
                     timeoutJob.cancel()
                     return@withContext // task interrupted
                 }
@@ -500,6 +585,8 @@ open class TaskRunner(
 
             var status = TaskStatus.failed
             try {
+                // from here a cancel leaves this run its slot, released in the finally block
+                context.runId?.let { BDPlugin.startedRunIds.add(it) }
                 task = getModifiedTask(
                     context = context.appContext,
                     task = task
@@ -507,8 +594,8 @@ open class TaskRunner(
                 notificationConfig = context.notificationConfig
                 notificationConfigJsonString = if (notificationConfig != null) bdJson.encodeToString<NotificationConfig>(notificationConfig!!) else null
 
-                canRunInForeground = runInForegroundFileSize >= 0 &&
-                        notificationConfig?.running != null // must have notification
+                canRunInForeground = (context is UIDTJobService.UIDTJobContext) || (runInForegroundFileSize >= 0 &&
+                        notificationConfig?.running != null) // must have notification
                 isResume = determineIfResume()
                 Log.i(
                     TAG,
@@ -523,7 +610,7 @@ open class TaskRunner(
             } catch (e: Exception) {
                 Log.w(TAG, "TaskRunner.run execution failed for taskId ${task.taskId}: $e")
                 if (e is CancellationException) {
-                    if (BDPlugin.cancelUpdateSentForTaskId.contains(task.taskId)) {
+                    if (BDPlugin.cancelUpdateSentForTaskId.containsKey(task.taskId)) {
                         status = TaskStatus.canceled
                     }
                     // else status remains .failed (system cancellation)
@@ -535,6 +622,7 @@ open class TaskRunner(
                     // NonCancellable to make sure we clean up even if job is being cancelled
                     // a pause request that was not acted upon must not affect a later run
                     BDPlugin.pausedTaskIds.remove(task.taskId)
+                    val slotReleased = slotReleasedByCancel()
                     processStatusUpdate(
                         task,
                         status,
@@ -551,16 +639,44 @@ open class TaskRunner(
                         // update only if not failed, or no retries remaining
                         context.updateNotification(task, status)
                     }
-                    if (status != TaskStatus.canceled) {
+                    if (!slotReleased && (context.runId != null || status != TaskStatus.canceled)) {
                         // let the holdingQueue know this task is no longer active
-                        // except TaskStatus.canceled is handled directly in cancellation and reset methods
+                        // except a canceled UIDT run, handled directly in cancellation and reset methods
                         BDPlugin.holdingQueue?.taskFinished(task)
+                    }
+                    context.runId?.let { BDPlugin.startedRunIds.remove(it) }
+                    val runId = context.runId
+                    if (context.isTaskStopped && runId != null) {
+                        // WorkManager sets a worker it stopped back to ENQUEUED and runs it again
+                        // later, outside the holding queue. A cancel also stops the worker, and
+                        // leaves its work CANCELLED. Cancelled by id, as cancelling by tag would
+                        // also cancel a newer work for this task
+                        try {
+                            val workManager = WorkManager.getInstance(context.appContext)
+                            val workId = UUID.fromString(runId)
+                            if (workManager.getWorkInfoById(workId).get()?.state != WorkInfo.State.CANCELLED) {
+                                workManager.cancelWorkById(workId).result.get()
+                                Log.i(
+                                    TAG,
+                                    "Cancelled work $runId of taskId ${task.taskId} after a WorkManager stop"
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Could not cancel work $runId of taskId ${task.taskId}: $e")
+                        }
                     }
                 }
             }
         }
         hasDeliveredResult = true
     }
+
+    /**
+     * Returns true if a cancel already released this run's holding queue slot, which a
+     * re-enqueued task may hold by now
+     */
+    private fun slotReleasedByCancel() =
+        context.runId?.let { BDPlugin.slotReleasedRunIds.remove(it) } == true
 
     /** Return true if resume is possible - defaults to false */
     open fun determineIfResume(): Boolean {
@@ -614,7 +730,7 @@ open class TaskRunner(
                             setRequestProperty(header.key, header.value)
                         }
                     }
-                    return connectAndProcess(this)
+                    return connectAndProcessUntilCanceled(this)
                 } finally {
                     activeConnection = null
                 }
@@ -626,6 +742,36 @@ open class TaskRunner(
             setTaskException(e)
         }
         return TaskStatus.failed
+    }
+
+    /**
+     * Calls [connectAndProcess], and disconnects the [connection] if this run is cancelled, or
+     * stopped by WorkManager, before that returns
+     *
+     * Blocking reads and writes on the connection ignore coroutine cancellation, so without the
+     * disconnect a cancelled run keeps transferring, and can complete. The disconnect runs in a
+     * child of this run's job, not in a coroutineScope, which would turn the status
+     * [connectAndProcess] returns after a cancel into a CancellationException
+     */
+    private suspend fun connectAndProcessUntilCanceled(connection: HttpURLConnection): TaskStatus {
+        var finished = false
+        val disconnectOnCancel = CoroutineScope(currentCoroutineContext()).launch(
+            start = CoroutineStart.UNDISPATCHED
+        ) {
+            try {
+                awaitCancellation()
+            } finally {
+                if (!finished) {
+                    connection.disconnect()
+                }
+            }
+        }
+        try {
+            return connectAndProcess(connection)
+        } finally {
+            finished = true
+            disconnectOnCancel.cancel()
+        }
     }
 
     /**
@@ -685,7 +831,7 @@ open class TaskRunner(
                 )
 
                 is CancellationException -> {
-                    if (BDPlugin.cancelUpdateSentForTaskId.contains(task.taskId)) {
+                    if (BDPlugin.cancelUpdateSentForTaskId.containsKey(task.taskId)) {
                         Log.i(
                             TAG,
                             "Canceled task with id ${task.taskId}: ${e.message}"
@@ -926,6 +1072,10 @@ open class TaskRunner(
      * Based on [canRunInForeground] and [contentLength] > [runInForegroundFileSize]
      */
     fun determineRunInForeground(task: Task, contentLength: Long) {
+        if (context is UIDTJobService.UIDTJobContext) {
+            Log.i(TAG, "TaskId ${task.taskId} will run in foreground (UIDT)")
+            return
+        }
         val wasRunInForeground = runInForeground
         runInForeground =
             canRunInForeground && contentLength > (runInForegroundFileSize.toLong() shl 20)

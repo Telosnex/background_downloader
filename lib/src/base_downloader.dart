@@ -123,7 +123,13 @@ abstract base class BaseDownloader {
 
   /// Stream to serialize database updates
   final _databaseUpdates =
-      StreamController<(Task, TaskStatus?, double?, int, TaskException?)>();
+      StreamController<
+        (Task, TaskStatus?, double?, int, TaskException?, Completer<void>)
+      >();
+  Future<void> _lastDatabaseUpdate = Future.value();
+
+  /// Wait for all pending database updates to complete
+  Future<void> flushDatabaseUpdates() => _lastDatabaseUpdate;
 
   BaseDownloader();
 
@@ -164,13 +170,17 @@ abstract base class BaseDownloader {
     await _storage.initialize();
     _databaseUpdates.stream
         .asyncMap((data) async {
-          await _consumeUpdateTaskInDatabase(
-            data.$1,
-            data.$2,
-            data.$3,
-            data.$4,
-            data.$5,
-          );
+          try {
+            await _consumeUpdateTaskInDatabase(
+              data.$1,
+              data.$2,
+              data.$3,
+              data.$4,
+              data.$5,
+            );
+          } finally {
+            data.$6.complete();
+          }
         })
         .listen((_) {});
     _initConnectivity();
@@ -202,23 +212,8 @@ abstract base class BaseDownloader {
   }
 
   void _onConnectivityChanged(bool connected, bool wifi) {
-    final wasConnected = isConnected;
-    final wasWiFi = isWiFi;
     isConnected = connected;
     isWiFi = wifi;
-
-    if (connected && (!wasConnected || (!wasWiFi && wifi))) {
-      final tasksToRetry = List<Task>.from(tasksWaitingToRetry);
-      for (final task in tasksToRetry) {
-        if (!task.requiresWiFi || isWiFi) {
-          tasksWaitingToRetry.remove(task);
-          log.info('Network available, resuming held task ${task.taskId}');
-          resume(task).then((resumed) {
-            if (!resumed) enqueue(task);
-          });
-        }
-      }
-    }
   }
 
   /// Configures the downloader
@@ -295,6 +290,7 @@ abstract base class BaseDownloader {
       for (final jsonString in progressUpdateMap.values) {
         processProgressUpdate(TaskProgressUpdate.fromJsonString(jsonString));
       }
+      await flushDatabaseUpdates();
       retrievedLocallyStoredData = true;
     }
   }
@@ -328,9 +324,36 @@ abstract base class BaseDownloader {
         );
   }
 
+  /// Registers the [Task.notificationConfig] of this [task], if set, as the
+  /// notification configuration for this task, overriding any configuration
+  /// for its group or the default.
+  ///
+  /// [Task.notificationConfig] is not serialized, so registering it (keyed on
+  /// the task) ensures it is also used when the task is retried or resumed
+  void registerTaskNotificationConfig(Task task) {
+    final config = task.notificationConfig;
+    if (config == null) {
+      return;
+    }
+    final taskConfig = TaskNotificationConfig(
+      taskOrGroup: task,
+      running: config.running,
+      complete: config.complete,
+      error: config.error,
+      paused: config.paused,
+      canceled: config.canceled,
+      progressBar: config.progressBar,
+      tapOpensFile: config.tapOpensFile,
+      groupNotificationId: config.groupNotificationId,
+    );
+    notificationConfigs.remove(taskConfig); // equality is based on taskOrGroup
+    notificationConfigs.add(taskConfig);
+  }
+
   /// Enqueue the task
   @mustCallSuper
   Future<bool> enqueue(Task task) async {
+    registerTaskNotificationConfig(task);
     if (task.allowPause) {
       canResumeTask[task] = Completer();
     }
@@ -1068,29 +1091,9 @@ abstract base class BaseDownloader {
     // has retriesRemaining > 0: those are always sent here, and are
     // intercepted to hold the task and reschedule in the near future
     final task = update.task;
-    final isConnectionError =
-        update.exception is TaskConnectionException ||
-        (update.exception?.description.toLowerCase().contains('socket') ==
-            true) ||
-        (update.exception?.description.toLowerCase().contains('timeout') ==
-            true) ||
-        (update.exception?.description.toLowerCase().contains('network') ==
-            true);
-
-    if (update.status == TaskStatus.failed &&
-        (task.retriesRemaining > 0 || (!isConnected && isConnectionError))) {
+    if (update.status == TaskStatus.failed && task.retriesRemaining > 0) {
       _emitStatusUpdate(TaskStatusUpdate(task, TaskStatus.waitingToRetry));
       _emitProgressUpdate(TaskProgressUpdate(task, progressWaitingToRetry));
-
-      // If device is offline, hold without decrementing retry budget
-      if (!isConnected) {
-        tasksWaitingToRetry.add(task);
-        log.info(
-          'TaskId ${task.taskId} failed while offline, holding until network restored',
-        );
-        return;
-      }
-
       task.decreaseRetriesRemaining();
       tasksWaitingToRetry.add(task);
       final waitTime = Duration(
@@ -1328,12 +1331,15 @@ abstract base class BaseDownloader {
     int expectedFileSize = -1,
     TaskException? taskException,
   }) async {
+    final completer = Completer<void>();
+    _lastDatabaseUpdate = completer.future;
     _databaseUpdates.add((
       task,
       status,
       progress,
       expectedFileSize,
       taskException,
+      completer,
     ));
   }
 
