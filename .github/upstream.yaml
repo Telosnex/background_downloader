@@ -1,0 +1,10 @@
+# Upstream sources, checked daily by the Upstream watch workflow
+# (telosnex_ci_tools, lib/src/upstream.dart). Set `seen` to skip an update.
+sources:
+  # The repository this one is a fork of. The pin is the last upstream commit
+  # merged here: update it with each merge. Alert once the oldest unmerged
+  # commit is a week old.
+  - name: 781flyingdutchman/background_downloader
+    branch: https://github.com/781flyingdutchman/background_downloader
+    pin: 3098b05e65445a12b57a8182755982ae3a77e6dd
+    lag_days: 7
