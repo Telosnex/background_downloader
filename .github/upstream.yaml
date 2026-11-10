@@ -6,5 +6,5 @@ sources:
   # commit is a week old.
   - name: 781flyingdutchman/background_downloader
     branch: https://github.com/781flyingdutchman/background_downloader
-    pin: 3098b05e65445a12b57a8182755982ae3a77e6dd
+    pin: 849d459e10e345678dcf3ad7040f5d9fe7d31231
     lag_days: 7
