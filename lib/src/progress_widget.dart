@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+// Keep the Flutter SDK export for compatibility with older SDKs.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 import 'file_downloader.dart';

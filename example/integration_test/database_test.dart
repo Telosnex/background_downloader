@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:background_downloader/background_downloader.dart';
+// Keep the Flutter SDK export for compatibility with older SDKs.
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
