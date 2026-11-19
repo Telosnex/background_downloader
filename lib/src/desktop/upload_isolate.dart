@@ -206,8 +206,7 @@ Future<(Task, TaskStatus)> multipartUpload(
     final derivedFilename = p.basename(file.path);
     if (filesData.length == 1) {
       // only for single file uploads do we set the task's filename property
-      if (task case UriUploadTask(:final fileUri)
-          when fileUri != null) {
+      if (task case UriUploadTask(:final fileUri) when fileUri != null) {
         task = task.copyWith(filename: fileUri.pathSegments.last);
       } else {
         task = task.copyWith(filename: derivedFilename);
